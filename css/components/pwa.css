@@ -1,0 +1,21 @@
+/* css/components/pwa.css */
+.pwa-banner{position:fixed;bottom:-100px;left:12px;right:12px;background:var(--green-900);color:white;border-radius:var(--radius-lg);padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-lg);transition:bottom .4s cubic-bezier(.34,1.56,.64,1);z-index:500;max-width:480px;margin:0 auto;}
+.pwa-banner.show{bottom:16px;}
+.pwa-banner-icon{width:44px;height:44px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.pwa-banner-text{flex:1;line-height:1.4;}
+.pwa-banner-text strong{display:block;font-size:.88rem;}
+.pwa-banner-text span{font-size:.72rem;opacity:.85;}
+.pwa-btn-install{background:white;color:var(--green-900);border:none;border-radius:20px;padding:7px 14px;font-weight:700;font-size:.78rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:6px;}
+.pwa-btn-dismiss{background:none;border:none;color:rgba(255,255,255,.7);font-size:1rem;cursor:pointer;padding:4px;flex-shrink:0;}
+.pwa-btn-dismiss:hover{color:white;}
+
+/* Mobile-specific Campo improvements */
+@media(max-width:768px){
+  .campo-mobile-fab{position:fixed;bottom:80px;right:16px;z-index:400;display:flex;flex-direction:column;gap:10px;}
+  .fab-btn{width:52px;height:52px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;font-size:1.1rem;cursor:pointer;box-shadow:var(--shadow-lg);transition:transform var(--transition);}
+  .fab-btn:active{transform:scale(.92);}
+  .fab-salvar{background:var(--green-800);color:white;}
+  .fab-enviar{background:var(--success);color:white;}
+  .form-grid{grid-template-columns:1fr 1fr!important;}
+  .tab-btn span.tab-label{display:none;}
+}

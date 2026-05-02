@@ -1,0 +1,5 @@
+/* css/tabs/herbtratos/herbtratos.css */
+#herbtratosTable thead tr:first-child th:nth-child(n+6):nth-child(-n+8){background:var(--green-700);}
+#herbtratosTable thead tr:first-child th:nth-child(n+9){background:var(--blue-800);}
+#herbtratosTable thead tr:last-child th:nth-child(-n+3){background:var(--green-600);}
+#herbtratosTable thead tr:last-child th:nth-child(n+4){background:var(--blue-700);}

@@ -1,0 +1,12 @@
+/* css/components/user-bar.css */
+.user-bar{background:var(--surface);border-radius:var(--radius-lg);padding:10px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:var(--shadow-sm);}
+.user-info{display:flex;align-items:center;gap:12px;}
+.user-avatar{width:44px;height:44px;background:linear-gradient(135deg,var(--green-800),var(--green-600));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.1rem;box-shadow:0 2px 8px rgba(46,125,50,.35);flex-shrink:0;}
+.user-title{font-weight:700;font-size:.95rem;color:var(--green-900);}
+.user-subtitle{font-size:.68rem;color:var(--text-muted);margin-top:1px;}
+.user-bar-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+#syncIndicator{font-size:.72rem;display:flex;align-items:center;gap:8px;color:var(--text-muted);}
+#syncDot{width:9px;height:9px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;transition:background .4s;}
+.app-version-txt{font-size:.65rem;color:#bbb;font-family:var(--font-mono);}
+.btn-logout{background:none;border:1.5px solid #ddd;border-radius:30px;padding:5px 12px;font-size:.72rem;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;gap:5px;transition:all var(--transition);}
+.btn-logout:hover{background:#fee;border-color:var(--danger);color:var(--danger);}

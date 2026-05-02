@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────
+    function isAuth()   { return request.auth != null; }
+    
+    function getUser() { 
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)); 
+    }
+    
+    function userExists() {
+      return isAuth() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function isMaster() {
+      return isAuth() && userExists() && getUser().data.get('Nivel', '') == 'master';
+    }
+
+    function isAdmin()  {
+      return isAuth() && userExists() && getUser().data.get('Nivel', '') in ['master', 'administrador', 'admin'];
+    }
+
+    function isActive() {
+      return isAuth() && (!userExists() || getUser().data.get('Ativo', true) == true);
+    }
+
+    function isTeam(team) {
+      return isActive() && getUser().data.get('Equipe', '') == team;
+    }
+
+    function teamAccess(team) {
+      return isAdmin() || isTeam(team);
+    }
+
+    // ⭐ ADICIONADO: Função para permitir qualquer coleção de equipe
+    function canAccessCollection(collectionName) {
+      return isAdmin() || (isActive() && getUser().data.get('Equipe', '') == collectionName);
+    }
+
+    // ⭐ ADICIONADO: Lista de coleções reservadas do sistema
+    function isSystemCollection(collectionName) {
+      return collectionName in ['usuarios', 'admin_config', 'dashboards', 'herbicida', 'tratos', 'biomassa', 'preparo', 'linhaamarela', 'fertirrigacao', 'plantio', 'tratosculturais'];
+    }
+
+    // ── Configuração Admin (equipamentos, rendimentos, planoHoras) ──
+    match /admin_config/{doc} {
+      allow get, list: if isActive();
+      allow write:     if isAdmin();
+    }
+
+    // ── Registros de campo por equipe ────────────────────────
+    match /herbicida/{docId} {
+      allow get, list, create: if isAuth() && (teamAccess('Herbicida') || teamAccess('herbicida'));
+      allow update, delete:    if isAdmin();
+    }
+    match /tratos/{docId} {
+      allow get, list, create: if isAuth() && (teamAccess('Tratos') || teamAccess('tratos'));
+      allow update, delete:    if isAdmin();
+    }
+    match /biomassa/{docId} {
+      allow get, list, create: if isAuth() && (teamAccess('Biomassa') || teamAccess('biomassa'));
+      allow update, delete:    if isAdmin();
+    }
+    match /preparo/{docId} {
+      allow get, list, create: if isAuth() && (teamAccess('Preparo') || teamAccess('preparo'));
+      allow update, delete:    if isAdmin();
+    }
+    match /linhaamarela/{docId} {
+      allow get, list, create: if isAuth() && (teamAccess('Linha Amarela') || teamAccess('linhaamarela'));
+      allow update, delete:    if isAdmin();
+    }
+    match /fertirrigacao/{docId} {
+      allow get, list, create: if isAuth() && (teamAccess('Fertirrigação') || teamAccess('fertirrigacao'));
+      allow update, delete:    if isAdmin();
+    }
+
+    // ⭐ ADICIONADO: Novas equipes
+    match /plantio/{docId} {
+      allow get, list, create: if isAuth() && (teamAccess('Plantio') || teamAccess('plantio'));
+      allow update, delete:    if isAdmin();
+    }
+    match /tratosculturais/{docId} {
+      allow get, list, create: if isAuth() && (teamAccess('Tratos Culturais') || teamAccess('tratosculturais'));
+      allow update, delete:    if isAdmin();
+    }
+
+    // ⭐ ADICIONADO: REGRA DINÂMICA - Aceita QUALQUER nova coleção automaticamente
+    match /{dynamicCollection}/{docId} {
+      allow get, list, create: if !isSystemCollection(dynamicCollection) && (isAdmin() || (isActive() && getUser().data.get('Equipe', '') == dynamicCollection));
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Usuários ─────────────────────────────────────────────
+    match /usuarios/{uid} {
+      allow get:    if isAuth() && (request.auth.uid == uid || isAdmin());
+      allow list:   if isAdmin();
+      allow create: if request.auth.uid == uid;
+      allow update: if isMaster() || (
+        request.auth.uid == uid && 
+        !(request.resource.data.get('Nivel', '') in ['master', 'administrador', 'admin'])
+      );
+      allow delete: if isMaster();
+    }
+
+    // ── Dashboards (futuro) ──────────────────────────────────
+    match /dashboards/{docId} {
+      allow read:  if isAuth() && isActive();
+      allow write: if isAdmin() && isActive();
+    }
+  }
+}

@@ -1,0 +1,69 @@
+/* css/base.css */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --green-900:#1b5e20; --green-800:#2e7d32; --green-700:#388e3c; --green-600:#43a047; --green-100:#e8f5e9; --green-50:#f1f8f2;
+  --blue-900:#0d47a1;  --blue-800:#1565c0;  --blue-700:#1976d2;  --blue-100:#e3f2fd;
+  --purple:#6a1b9a; --orange:#f57f17; --red-dark:#bf360c; --orange-light:#ff9800;
+  --danger:#dc3545; --success:#28a745;
+  --text:#1a1a1a; --text-muted:#6c757d; --border:#e0e6e0; --surface:#fff; --bg:#eef2f0;
+  --radius-sm:10px; --radius:16px; --radius-lg:24px;
+  --shadow-sm:0 2px 8px rgba(0,0,0,.06); --shadow:0 4px 20px rgba(0,0,0,.09); --shadow-lg:0 8px 32px rgba(0,0,0,.14);
+  --transition:.2s ease;
+  --font-sans:'DM Sans',system-ui,sans-serif; --font-mono:'DM Mono',monospace;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:var(--font-sans);background:var(--bg);color:var(--text);padding:12px;min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;}
+.app-container{max-width:1700px;margin:0 auto;}
+
+/* ── Equipe badges ─────────────────────────────────── */
+.badge-equipe{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.65rem;font-weight:600;letter-spacing:.02em;white-space:nowrap;}
+.badge-tratos        {background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;}
+.badge-herbicida     {background:#f1f8e9;color:#33691e;border:1px solid #c5e1a5;}
+.badge-preparo       {background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;}
+.badge-fertirrigação,.badge-fertirreg{background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8;}
+.badge-linha-amarela, .badge-linhaamarela {background:#ffeb3b;color:#827717;border:1px solid #fbc02d;}
+.badge-biomassa      {background:#fbe9e7;color:#bf360c;border:1px solid #ffab91;}
+
+/* ── Perfil badges ─────────────────────────────────── */
+.badge-perfil{padding:2px 10px;border-radius:20px;font-size:.65rem;font-weight:600;}
+.badge-perfil-admin   {background:#fce4ec;color:#c62828;}
+.badge-perfil-gestor  {background:#e8f5e9;color:#1b5e20;}
+.badge-perfil-operador{background:#e3f2fd;color:#0d47a1;}
+
+/* ── Status badges ─────────────────────────────────── */
+.badge-status{padding:2px 10px;border-radius:20px;font-size:.65rem;font-weight:600;}
+.status-ativo  {background:#e8f5e9;color:#1b5e20;}
+.status-inativo{background:#f5f5f5;color:#9e9e9e;}
+
+/* ── Row states ────────────────────────────────────── */
+.row-inactive{opacity:.5;}
+.meta-ok     {background:#f0fff4;}
+.meta-parcial{background:#fffbf0;}
+.val-ok      {color:var(--green-800);font-weight:700;}
+.val-parcial {color:var(--orange-light);font-weight:600;}
+.bold        {font-weight:600;}
+.accent-green{color:var(--green-900)!important;font-weight:700;}
+.td-left     {text-align:left!important;padding-left:10px!important;}
+.td-motivo   {text-align:left!important;font-size:.65rem;max-width:140px;}
+.empty-row   {text-align:center;padding:20px;color:var(--text-muted);font-size:.8rem;}
+
+/* ── Toast ─────────────────────────────────────────── */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:var(--radius);font-size:.82rem;font-weight:500;color:white;background:#333;box-shadow:var(--shadow-lg);transform:translateY(20px);opacity:0;transition:all .3s;z-index:9999;max-width:340px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast-success{background:var(--green-800);}
+.toast-error  {background:var(--danger);}
+.toast-warn   {background:var(--orange-light);}
+
+/* ── Animations ─────────────────────────────────────── */
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.6);opacity:.6;}}
+.pulse{animation:pulse 1.2s ease infinite;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.fade-in{animation:fadeIn .25s ease both;}
+
+/* ── Checkbox equipe ─────────────────────────────────── */
+.check-equipe{display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:4px 0;user-select:none;}
+.check-equipe input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:var(--green-800);}
+
+@media(max-width:768px){body{padding:8px;}.toast{bottom:12px;right:12px;left:12px;max-width:none;}}

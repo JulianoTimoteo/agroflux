@@ -1,0 +1,10 @@
+/* css/tabs/campo/campo.css */
+.campo-planejado-box{background:linear-gradient(135deg,var(--green-100),#ddf0de);border:1px solid #c3e6c5;border-radius:var(--radius);padding:13px 18px;margin-bottom:16px;display:flex;gap:22px;flex-wrap:wrap;align-items:center;font-size:.8rem;color:var(--green-900);}
+.pbox-item{display:flex;flex-direction:column;gap:2px;}
+.pbox-label{font-size:.64rem;opacity:.75;text-transform:uppercase;letter-spacing:.04em;}
+.pbox-value{font-size:1.05rem;font-weight:700;font-family:var(--font-mono);color:var(--green-900);}
+.badge-meta{background:var(--green-800);color:white;padding:4px 14px;border-radius:20px;font-size:.72rem;font-weight:600;display:inline-flex;align-items:center;gap:5px;box-shadow:0 2px 8px rgba(46,125,50,.3);}
+#metaTag{margin-left:auto;}
+.sub-field{display:none;}
+.badge-pending{background:var(--orange-light);color:white;padding:2px 10px;border-radius:20px;font-size:.65rem;font-weight:600;}
+.pending-section h4{font-size:.88rem;font-weight:700;color:var(--green-900);margin-bottom:8px;display:flex;align-items:center;gap:8px;}
