@@ -1,0 +1,12 @@
+/* ═══════════════════════════════════════════════════════════════
+   config-colunas.css — Modal "Configurar Colunas por Equipe"
+   ═══════════════════════════════════════════════════════════════
+   Estilos exclusivos do modal mTeamConfig. As linhas de coluna
+   são montadas dinamicamente em config-colunas.js — este arquivo
+   é o ponto único de evolução visual desse modal.
+*/
+
+/* (Reservado) — atualmente o modal usa apenas as classes de
+   layout.css (.modal, .modal-content, .modal-btns, .fg, .btn)
+   e estilos inline gerados pelo JS. Mantido como ponto de
+   extensão para futuras customizações isoladas. */

@@ -1,0 +1,43 @@
+/* ═══════════════════════════════════════════════════════════════
+   global.css — Variáveis CSS, reset, fonte base, body/html
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root{
+  --g900:#071a09; --g800:#1b5e20; --g700:#2e7d32; --g600:#43a047; --g400:#66bb6a;
+  --g100:#e8f5e9; --g50:#f1f8f2;
+  --b900:#0d1b3e; --b800:#1565c0; --b700:#1976d2; --b600:#2196f3; --b100:#e3f2fd;
+  --glass:rgba(255,255,255,0.07); --glass-b:rgba(255,255,255,0.14);
+  --card:#fff; --bg:#eef2f0; --border:#dde6dd;
+  --text:#1a2a1c; --muted:#6b7d6d;
+  --danger:#d32f2f; --warn:#f57c00; --success:#2e7d32;
+  --r:12px; --r-lg:20px;
+  --sh:0 2px 16px rgba(0,0,0,0.08); --sh-lg:0 8px 40px rgba(0,0,0,0.18);
+  --perf-good: #28a745;
+  --perf-medium: #17a2b8;
+  --perf-bad: #ffc107;
+  --perf-worst: #dc3545;
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  --glass-blur: 8px;
+  --tr:.16s ease;
+}
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;height:100%}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased;min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+
+.hidden { display: none !important; }
+
+/* Animações globais reusadas em vários módulos */
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.7)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes mIn{from{transform:translateY(12px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+@keyframes slideInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+@keyframes pulseSync{0%{box-shadow:0 0 0 0 rgba(46,125,50,0.6)}70%{box-shadow:0 0 0 10px rgba(46,125,50,0)}100%{box-shadow:0 0 0 0 rgba(46,125,50,0)}}

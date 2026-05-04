@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d2414">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="AgroFlux — Gestão de Campo · Usina Pitangueiras · 'A Energia Que Move a Região' (1975–2026)">
+<link rel="manifest" href="manifest.json">
+<title>AgroFlux Gestão de Campo · Usina Pitangueiras</title>
+
+<!-- ── Bibliotecas externas (CDN) ─────────────────────────────── -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="icon" type="image/png" href="logo_topo.png">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- ── Estilos modulares ──────────────────────────────────────── -->
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/auth.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/lancamento.css">
+<link rel="stylesheet" href="css/registros.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/usuarios.css">
+<link rel="stylesheet" href="css/config-colunas.css">
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spin"></div>
+  <p id="loadingMsg">Conectando...</p>
+</div>
+
+<!-- Setup page -->
+<div id="setupPage">
+<div class="login-wrap"><div class="login-card">
+<div class="login-brand"><div class="login-icon"><i class="fas fa-leaf"></i></div><div class="login-title">Primeiro Acesso</div><div class="login-sub">Criar conta Administrador Master</div></div>
+<form id="setupForm" class="login-form">
+<div class="fg"><label>Nome Completo</label><div class="fi"><i class="fas fa-user"></i><input type="text" id="setupNome" placeholder="Seu nome..." required></div></div>
+<div class="fg"><label>E-mail</label><div class="fi"><i class="fas fa-envelope"></i><input type="email" id="setupEmail" placeholder="email@usinapitangueiras.com.br" required autocomplete="username"></div></div>
+<div class="fg"><label>Senha</label><div class="fi"><i class="fas fa-lock"></i><input type="password" id="setupSenha" placeholder="mínimo 6 caracteres" required minlength="6" autocomplete="new-password"></div></div>
+<div class="fg"><label>Confirmar Senha</label><div class="fi"><i class="fas fa-lock"></i><input type="password" id="setupSenha2" placeholder="repita a senha" required autocomplete="new-password"></div></div>
+<button type="submit" class="login-btn" id="setupBtn"><i class="fas fa-rocket"></i> Criar e Entrar</button>
+<div class="login-err" id="setupErr"></div>
+</form>
+</div><div class="login-footer">AgroFlux v4.0 · Usina Pitangueiras · "A Energia Que Move a Região" · 1975–2026</div></div>
+</div>
+
+<!-- Login page -->
+<div id="loginPage">
+<div class="login-wrap"><div class="login-card">
+<div class="login-brand"><div class="login-icon" id="loginIconBox"><i class="fas fa-leaf"></i></div><div class="login-title">AgroFlux</div><div class="login-sub">Gestão de Campo · Usina Pitangueiras<br>"A Energia Que Move a Região"</div></div>
+<form id="loginForm" class="login-form" autocomplete="on">
+<div class="fg"><label>Login / Apelido</label><div class="fi"><i class="fas fa-user"></i><input type="text" id="loginLogin" placeholder="seu.apelido" autocomplete="username"></div></div>
+<div class="fg"><label>Senha</label><div class="fi pwd-wrapper"><i class="fas fa-lock"></i><input type="password" id="loginPass" placeholder="••••••" autocomplete="current-password"><i class="fas fa-eye pwd-toggle" onclick="window.HT && HT.togglePwd('loginPass', this)"></i></div></div>
+<div class="login-options">
+  <label><input type="checkbox" id="loginSave"> Salvar Usuário</label>
+  <label><input type="checkbox" id="loginRemember" checked> Manter Conectado</label>
+</div>
+<button type="submit" class="login-btn" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+<div class="login-err" id="loginErr"></div>
+</form>
+<div class="login-link"><a onclick="window.HT && HT.esqueciSenha()">Esqueci a senha</a></div>
+</div><div class="login-footer">AgroFlux v4.0 · Usina Pitangueiras · "A Energia Que Move a Região" · 1975–2026</div></div>
+</div>
+
+<!-- App -->
+<div id="app">
+<!-- ▼▼▼ CORREÇÃO 1: botões usam onclick direto em window.HT — funciona mesmo antes do módulo carregar ▼▼▼ -->
+<header class="user-bar">
+<div class="ub-left"><div class="ub-avatar"><i class="fas fa-leaf"></i></div><img src="logo_topo.png" style="height:32px; margin: 0 8px;"><div><div class="ub-name" id="ubName">AgroFlux</div><div class="ub-role" id="ubRole">Usina Pitangueiras</div></div></div>
+<div class="ub-right">
+<div class="sync-badge"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Offline</span></div>
+<button class="ub-btn" onclick="window.HT && HT.syncNow()" title="Sincronizar"><i class="fas fa-sync-alt"></i></button>
+<button class="ub-btn" id="pwaBtn" title="Instalar app" style="display:none"><i class="fas fa-download"></i></button>
+<button class="ub-btn" onclick="window.HT && HT.abrirGerenciar()"><i class="fas fa-user-cog"></i><span> Gerenciar</span></button>
+<button class="ub-btn danger" onclick="window.HT && HT.logout()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+</div>
+</header>
+
+<main class="page-wrap">
+<button class="mobile-nav-trigger" id="mobileNavBtn" onclick="window.HT && HT.toggleMobileNav()"><i class="fas fa-bars"></i></button>
+<nav class="tabs-nav" id="tabsNav"></nav>
+
+<!-- Team tab -->
+<section id="tab-equipe" class="tab-pane">
+<article class="card">
+<div class="card-head">
+<h2 id="hbTabHeader"><i class="fas fa-tractor"></i> <span id="hbEquipeTitle">Equipe Tratos</span></h2>
+<div style="display:flex;gap:7px;flex-wrap:wrap">
+<button class="btn btn-outline btn-sm" onclick="window.HT && HT.exportTeamImage()" style="background:#fff;"><i class="fas fa-file-image"></i> Imagem</button>
+<button class="btn btn-success btn-sm" onclick="window.HT && HT.exportCSV()"><i class="fas fa-download"></i> CSV</button>
+</div>
+</div>
+<div class="info-note"><i class="fas fa-clock"></i> Próxima atualização automática às <strong id="nextSyncTime">--:--</strong></div>
+<div class="tbl-wrap" style="max-height: 70vh; overflow-y: auto;"><table><thead id="hbHead"></thead><tbody id="hbBody"></tbody></table></div>
+</article>
+</section>
+
+<!-- Campo tab -->
+<section id="tab-campo" class="tab-pane">
+<article class="card">
+<h3 style="margin-bottom:14px;color:var(--g900);display:flex;align-items:center;gap:8px"><i class="fas fa-mobile-alt"></i> Lançamento de Campo</h3>
+<div class="info-note"><i class="fas fa-info-circle"></i> Selecione a <strong>Equipe</strong> e depois o equipamento para preencher os dados.</div>
+<div class="form-card">
+<div class="fg" style="margin-bottom:12px">
+  <label>Equipe de Trabalho</label>
+  <div id="cEquipeTabs" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+</div>
+<div class="form-grid">
+<div class="fg"><label>Frota</label><select id="cFrota" onchange="window.HT && HT.onFrotaChange()" disabled><option value="">Selecione a equipe primeiro...</option></select></div>
+<div class="fg"><label>Modelo</label><input type="text" id="cModelo" readonly placeholder="Auto-preenchido"></div>
+<div class="fg"><label>Cód. Operação</label><select id="cCodOp" onchange="window.HT && HT.onCodChange()"><option value="">Selecione...</option></select></div>
+<div class="fg"><label>Operação</label><input type="text" id="cOp" readonly placeholder="Auto-preenchido"></div>
+<div class="fg"><label>Turno</label><select id="cTurno" onchange="window.HT && HT.onTurnoChange()"><option value="1">1 (8h)</option><option value="2">2 (16h)</option><option value="3">3 (24h)</option><option value="4">4 (10h)</option><option value="5">5 (12h)</option></select></div>
+<div class="fg" id="cSubDiv" style="display:none"><label>SubTurno</label><select id="cSub" onchange="window.HT && HT.onTurnoChange()"><option value="1">1 turno</option><option value="2">2 turnos</option></select></div>
+</div>
+<div class="plan-box" id="planBox" style="display:none">
+<div class="pbi"><label>Há/h Plan.</label><span id="pbHah">—</span></div>
+<div class="pbi"><label>Horas Plan.</label><span id="pbHoras">—</span></div>
+<div class="pbi"><label>Há/Dia Plan.</label><span id="pbHaDia">—</span></div>
+<div id="pbExtraMetas" style="display:contents"></div>
+<div class="meta-tag" id="metaTag"></div>
+</div>
+<div class="form-grid" id="cRealizedGrid" style="grid-template-columns: repeat(4, 1fr); gap: 15px;">
+<div class="fg"><label>Horas Trabalhadas (Real.)</label><input type="number" step="0.01" id="cHoras" oninput="window.HT && HT.onHorasIn()" placeholder="0,00"></div>
+<div class="fg"><label>Há/Dia (Real.)</label><input type="number" step="0.01" id="cHaDia" oninput="window.HT && HT.onHaDiaIn()" placeholder="0,00"></div>
+<div id="cExtraFields" style="display: contents;"></div>
+</div>
+<div class="fg" style="margin-bottom:10px"><label>Motivo de Não Atingir</label><textarea id="cMotivo" maxlength="300" rows="2"></textarea><div class="char-cnt" id="cntMot">0/300</div></div>
+<div class="fg" style="margin-bottom:10px"><label>Ação Corretiva</label><textarea id="cAcao" maxlength="300" rows="2"></textarea><div class="char-cnt" id="cntAcao">0/300</div></div>
+<div class="act-btns">
+<button class="btn btn-outline" onclick="window.HT && HT.limparCampo()"><i class="fas fa-eraser"></i> Limpar</button>
+<button class="btn btn-primary" onclick="window.HT && HT.salvarCampo()"><i class="fas fa-save"></i> Salvar</button>
+</div>
+</div>
+<h4 style="font-size:.85rem;font-weight:700;color:var(--g900);margin:4px 0 10px;display:flex;align-items:center;gap:8px"><i class="fas fa-clock"></i> Registros Pendentes <span class="cnt-tag" id="pendCnt">0</span></h4>
+<div class="tbl-wrap"><table><thead><tr class="th-base"><th style="width:30px"><input type="checkbox" onclick="window.HT && HT.toggleSelPend(this.checked)"></th><th>Cód.</th><th>Operação</th><th>Frota</th><th>Modelo</th><th>Horas</th><th>Há/Dia</th><th>Data</th><th>Status</th><th>Ação <button id="syncBtnHeader" class="btn btn-success btn-xs" onclick="window.HT && HT.sincronizarCampo()" title="Sincronizar"><i class="fas fa-fire"></i></button></th></tr></thead><tbody id="pendBody"></tbody></table></div>
+<nav id="pendPag" class="pag"></nav>
+</article>
+<div class="campo-fab">
+<button class="fab fab-save" onclick="window.HT && HT.salvarCampo()" title="Salvar"><i class="fas fa-save"></i></button>
+</div>
+</section>
+
+<!-- Dashboard tab -->
+<section id="tab-dashboard" class="tab-pane">
+  <header class="dash-header-glass" style="display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:300px;">
+      <h2><i class="fas fa-chart-bar"></i> Dashboard — Planejado × Realizado</h2>
+      <div class="dash-tabs" id="dashTabs" style="border-bottom:none; margin-bottom:0; padding-bottom:0;"></div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:flex-end;">
+      <button class="btn btn-outline btn-sm" onclick="window.HT && HT.exportDash()" style="background:#fff;"><i class="fas fa-file-image"></i> Exportar</button>
+      <div class="fg" style="min-width:150px;">
+        <label style="color:#fff; font-size:10px;">FILTRAR POR DATA</label>
+        <input type="date" id="dashDateFilter" onchange="window.HT && HT.changeDashDate(this.value)" style="padding:5px 10px; border-radius:8px; border:none; width:100%;">
+      </div>
+    </div>
+  </header>
+  <div id="dashContent" class="dash-content-glass"></div>
+</section>
+
+<!-- Admin tab -->
+<section id="tab-admin" class="tab-pane">
+<div class="card" style="margin-bottom:14px">
+<h2><i class="fas fa-database"></i> Gestão Administrativa <span class="fb-badge"><i class="fas fa-fire"></i> Firebase</span></h2>
+<p style="color:var(--muted);font-size:.78rem;margin-top:4px">Gerencie frotas, rendimentos e plano de horas. Alterações sincronizam automaticamente com o <strong>Firestore</strong>.</p>
+<div style="margin-top: 10px;">
+  <button class="btn btn-outline btn-sm" onclick="window.HT && HT.abrirTeamConfig()"><i class="fas fa-columns"></i> Configurar Colunas Adicionais</button>
+</div>
+</div>
+<div class="admin-section">
+<div class="admin-head"><h3><i class="fas fa-tractor"></i> Cadastro de Frotas / Equipamentos <span class="cnt-tag" id="frotaCnt"></span></h3>
+<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+<select id="frotaTeamFilter" onchange="window.HT && HT.onFrotaTeamChange()" style="padding:7px 10px; border-radius:9px; border:1.5px solid var(--border); font-size:0.8rem; font-weight:600; color:var(--g800);"></select>
+<input type="text" class="srch" id="frotaSrch" placeholder="Frota, Modelo ou Cód..." oninput="window.HT && HT.onFrotaSrchChange()" style="width: 180px;">
+<button class="btn btn-primary btn-sm" onclick="window.HT && HT.abrirFrota()"><i class="fas fa-plus"></i> Adicionar Frota</button>
+</div></div>
+<div class="tbl-wrap" style="max-height: 400px; overflow-y: auto;"><table><thead><tr class="th-base"><th>Frota</th><th>Descrição (Modelo)</th><th>Cód. Operação</th><th>Operação</th><th>Equipe</th><th>Ações</th></tr></thead><tbody id="frotaBody"></tbody></table></div>
+<div id="frotaPag" class="pag"></div>
+</div>
+<div class="admin-section">
+<div class="admin-head"><h3><i class="fas fa-list-alt"></i> Tabela de Operações Agrícolas (Configuração Mestre) <span class="cnt-tag" id="opsCnt"></span></h3>
+<div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+<select id="opsTeamFilter" onchange="window.HT && HT.renderOps()" style="padding:7px 10px; border-radius:9px; border:1.5px solid var(--border); font-size:0.8rem; font-weight:600; color:var(--g800);"></select>
+<input type="text" class="srch" id="opsSrch" placeholder="Cód. ou Descrição..." oninput="window.HT && HT.onOpsSrchChange()" style="width: 180px;">
+<button class="btn btn-primary btn-sm" onclick="window.HT && HT.abrirOpAgric()"><i class="fas fa-plus"></i> Adicionar Operação</button>
+</div></div>
+<div class="tbl-wrap" style="max-height:600px;overflow-y:auto"><table><thead id="opsHead"></thead><tbody id="opsBody"></tbody></table></div>
+</div>
+<div class="admin-section">
+<div class="admin-head"><h3><i class="fas fa-calculator"></i> Regras de Cálculo</h3></div>
+<div class="admin-rules"><strong>Base:</strong> Hora base = Plano Horas / 8 por hora<br>Turno 1(8h)=Base×1 | 2(16h)=Base×2 | 3(24h)=Base×3 | 4(10h)=(Base/8)×10 | 5(12h)=(Base/8)×12 | SubTurno 2 = dobra</div>
+</div>
+</section>
+
+<!-- Usuários tab — DENTRO do main, fora do admin-section -->
+<section id="tab-usuarios" class="tab-pane">
+<div class="card" style="margin-bottom:14px"><h2><i class="fas fa-users"></i> Gerenciamento de Usuários <span class="fb-badge"><i class="fas fa-fire"></i> Firebase Auth</span></h2><p style="color:var(--muted);font-size:.78rem;margin-top:4px">Apenas para administradores master. Usuários autenticam via Firebase Auth.</p></div>
+<div class="admin-section">
+<div class="admin-head"><h3><i class="fas fa-user-circle"></i> Usuários <span class="cnt-tag" id="usCnt"></span></h3>
+<button class="btn btn-primary btn-sm" onclick="window.HT && HT.abrirUsuario()"><i class="fas fa-plus"></i> Novo Usuário</button>
+</div>
+<div class="tbl-wrap" style="max-height: 70vh; overflow-y: auto;"><table><thead id="usHead"></thead><tbody id="usBody"></tbody></table></div>
+<div id="usPag" class="pag"></div>
+</div>
+</section>
+</main>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Modal Frota -->
+<div id="mFrota" class="modal"><div class="modal-content"><h3><i class="fas fa-tractor"></i> <span id="mFrotaTitle">Adicionar Frota</span></h3>
+<div class="fg" style="margin-bottom:11px"><label>Frota *</label><input type="text" id="mfFrota"></div>
+<div class="fg" style="margin-bottom:11px"><label>Equipe</label><select id="mfEquipe" onchange="window.HT && HT.onFrotaEquipeChange()"></select></div>
+<div class="fg" style="margin-bottom:11px"><label>Operações Permitidas * <small>(selecione uma ou mais)</small></label>
+<div style="position:relative;margin-bottom:5px">
+<input type="text" class="srch" id="mfOpSrch" placeholder="Pesquisar operação..." oninput="window.HT && HT.onFrotaOpSrch()" style="width:100%">
+</div>
+<select id="mfOperacoes" multiple size="5" class="custom-op-list" style="min-height:150px;" onchange="window.HT && HT.onFrotaOpChange()" onmousedown="if(event.target.tagName==='OPTION'){event.preventDefault(); const st=this.scrollTop; event.target.selected = !event.target.selected; this.focus({preventScroll:true}); this.scrollTop=st; setTimeout(()=>this.scrollTop=st,0); window.HT && HT.onFrotaOpChange();}" onkeydown="if((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a'){ event.preventDefault(); const ops=Array.from(this.options); const allSel=ops.every(o=>o.selected); ops.forEach(o=>o.selected=!allSel); window.HT && HT.onFrotaOpChange(); }"></select>
+</div>
+<div class="fg" style="margin-bottom:11px"><label>Descrição (Modelo) *</label><input type="text" id="mfModelo"></div>
+<div class="fg" style="margin-bottom:11px"><label>Operação</label><input type="text" id="mfOp" readonly style="background:#f0f4f0"></div>
+<div class="modal-btns">
+  <button class="btn btn-danger btn-sm" onclick="window.HT && HT.fecharModal('mFrota')">Cancelar</button>
+  <button class="btn btn-primary btn-sm" onclick="window.HT && HT.salvarFrota()"><i class="fas fa-save"></i> Salvar</button>
+</div>
+</div></div>
+
+<!-- Modal Team Config -->
+<div id="mTeamConfig" class="modal"><div class="modal-content"><h3><i class="fas fa-columns"></i> Configurar Colunas por Equipe</h3>
+<div class="fg" style="margin-bottom:11px"><label>Equipe</label><select id="mtcEquipe" onchange="window.HT && HT.renderTeamConfigCols()"><option>Tratos</option><option>Herbicida</option><option>Fertirrigação</option><option>Preparo</option><option>Linha Amarela</option><option>Biomassa</option></select></div>
+<div id="mtcColList" style="margin-bottom: 15px;"></div>
+<div class="fg" style="margin-bottom:15px"><label>Novo Título (ex: Aplicado m³)</label><input type="text" id="mtcNewLabel"></div>
+<div class="modal-btns">
+  <button class="btn btn-success btn-sm" onclick="window.HT && HT.addTeamCol()">Salvar</button>
+  <button class="btn btn-primary btn-sm" onclick="window.HT && HT.limparTeamConfig()">Limpar</button>
+  <button class="btn btn-danger btn-sm" onclick="window.HT && HT.fecharModal('mTeamConfig')">Cancelar</button>
+</div>
+</div></div>
+
+<!-- ▼▼▼ CORREÇÃO 2: Modal mOpAgric — adicionado </div> faltante no modal-content ▼▼▼ -->
+<div id="mOpAgric" class="modal">
+  <div class="modal-content">
+    <h3><i class="fas fa-list-alt"></i> <span id="mOpAgricTitle">Adicionar Operação</span></h3>
+    <div class="fg" style="margin-bottom:11px"><label>Código *</label><input type="text" id="moCod"></div>
+    <div class="fg" style="margin-bottom:11px"><label>Descrição *</label><input type="text" id="moDesc"></div>
+    <div class="fg" style="margin-bottom:11px"><label>Equipe *</label><select id="moEquipe" onchange="window.HT && HT.onOpEquipeChange()"></select></div>
+    <div class="fg" id="moNewEquipeGrp" style="margin-bottom:11px; display:none"><label>Nome da Nova Equipe *</label><input type="text" id="moNewEquipe"></div>
+    <div class="form-grid">
+      <div class="fg"><label>Turno</label><select id="moTurno" onchange="window.HT && HT.onOpTurnoChange()"><option value="1">1 (8h)</option><option value="2">2 (16h)</option><option value="3">3 (24h)</option><option value="4">4 (10h)</option><option value="5">5 (12h)</option></select></div>
+      <div class="fg" id="moSubDiv" style="display:none"><label>SubTurno</label><select id="moSub"><option value="1">1 turno</option><option value="2">2 turnos</option></select></div>
+      <div class="fg"><label>Tipo Trator</label><input type="text" id="moTipo" value="Leve"></div>
+    </div>
+    <div class="form-grid">
+      <div class="fg"><label>Horas Base *</label><input type="number" step="any" id="moHorasBase" value="3.95"></div>
+    </div>
+    <div class="fg" style="margin-bottom:11px"><label>Rendimento (Há/h) *</label><input type="number" step="any" id="moTotal" value="1.0"></div>
+    <div id="moExtraPlan" class="form-grid" style="grid-column: 1 / -1; margin-top: 10px;"></div>
+    <div class="modal-btns">
+      <button class="btn btn-danger btn-sm" onclick="window.HT && HT.fecharModal('mOpAgric')">Cancelar</button>
+      <button class="btn btn-success btn-sm" onclick="window.HT && HT.salvarOpAgric()"><i class="fas fa-save"></i> Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Usuário -->
+<div id="mUsuario" class="modal"><div class="modal-content"><h3><i class="fas fa-user-circle"></i> <span id="mUsuarioTitle">Novo Usuário</span></h3>
+<form id="formUsuario" onsubmit="event.preventDefault(); window.HT && HT.salvarUsuario();">
+<div class="form-grid" style="grid-template-columns:1fr 1fr">
+<div class="fg"><label>Nome *</label><input type="text" id="uNome"></div>
+<div class="fg"><label>E-mail * <small>(Firebase Auth)</small></label><input type="email" id="uEmail" autocomplete="username"></div>
+</div>
+<div class="form-grid" style="grid-template-columns:1fr 1fr">
+<div class="fg"><label>Login / Apelido *</label><input type="text" id="uLogin" autocomplete="username"></div>
+<div class="fg"><label>Nível *</label>
+<select id="uNivel">
+<option value="operador">Operador</option>
+<option value="lider">Líder</option>
+<option value="encarregado">Encarregado</option>
+<option value="admin">Administrador</option>
+<option value="master">Master</option>
+</select></div>
+</div>
+<div class="fg" style="margin-bottom:11px"><label style="display:flex;justify-content:space-between;align-items:center">Abas de Acesso (Permissões) <button type="button" class="btn btn-secondary btn-xs" onclick="window.HT && HT.selAllUser('u-ab-check',true)">Todas</button></label>
+<div id="uAbasCheck" style="display:grid;grid-template-columns:1fr 1fr;gap:5px;background:#f9f9f9;padding:10px;border-radius:8px;border:1px solid var(--border)"></div>
+</div>
+<div class="fg" id="uSenhaGrp" style="margin-bottom:4px"><label>Senha <small>(mín. 6 chars)</small></label><input type="password" id="uSenha" autocomplete="new-password" placeholder="••••••"></div>
+<div class="modal-btns"><button type="button" class="btn btn-secondary btn-sm" onclick="window.HT && HT.fecharModal('mUsuario')">Cancelar</button><button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Salvar</button></div>
+</form>
+</div></div>
+
+<!-- Modal Gerenciar -->
+<div id="mGerenciar" class="modal"><div class="modal-content"><h3><i class="fas fa-user-cog"></i> Gerenciar Conta</h3>
+<form id="formGerenciar" onsubmit="event.preventDefault(); window.HT && HT.salvarGerenciar();">
+<div class="fg" style="margin-bottom:11px"><label>Nome</label><input type="text" id="gNome"></div>
+<div class="fg" style="margin-bottom:11px"><label>Login / Apelido</label><input type="text" id="gLogin" autocomplete="username"></div>
+<div class="fg" style="margin-bottom:11px"><label>Senha Atual (para alterar senha)</label><div class="pwd-wrapper"><input type="password" id="gSenhaAntiga" autocomplete="current-password"><i class="fas fa-eye pwd-toggle" onclick="window.HT && HT.togglePwd('gSenhaAntiga',this)"></i></div></div>
+<div class="fg" style="margin-bottom:11px"><label>Nova Senha <small>(mín. 6 chars)</small></label><div class="pwd-wrapper"><input type="password" id="gSenhaNova1" autocomplete="new-password"><i class="fas fa-eye pwd-toggle" onclick="window.HT && HT.togglePwd('gSenhaNova1',this)"></i></div></div>
+<div class="fg" style="margin-bottom:4px"><label>Confirmar Nova Senha</label><div class="pwd-wrapper"><input type="password" id="gSenhaNova2" autocomplete="new-password"><i class="fas fa-eye pwd-toggle" onclick="window.HT && HT.togglePwd('gSenhaNova2',this)"></i></div></div>
+<div class="modal-btns"><button type="button" class="btn btn-secondary btn-sm" onclick="window.HT && HT.fecharModal('mGerenciar')">Cancelar</button><button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Salvar</button></div>
+</form>
+</div></div>
+
+<!-- Modal Confirmação -->
+<div id="mConfirm" class="modal"><div class="modal-content">
+<h3 id="mConfirmTitle">Confirmação</h3>
+<div id="mConfirmMsg" style="margin:10px 0 20px;font-size:.88rem;color:var(--text);line-height:1.5"></div>
+<div class="modal-btns">
+<button class="btn btn-secondary btn-sm" onclick="window.HT && HT.closeConfirm(false)">Cancelar</button>
+<button class="btn btn-primary btn-sm" onclick="window.HT && HT.closeConfirm(true)">Confirmar</button>
+</div></div></div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  FIREBASE POWERED SCRIPT                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  ENTRY POINT (modular)                                         -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>
