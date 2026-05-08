@@ -16,8 +16,13 @@ import { refreshAll } from './refresh.js';
 // ── Detach listeners ativos antes de re-anexar ────────────────
 export function detachListeners() {
   if (S.listeners && S.listeners.length) {
-    S.listeners.forEach(unsub => { if (typeof unsub === 'function') unsub(); });
+    const activeListeners = [...S.listeners];
     S.listeners = [];
+    activeListeners.forEach(unsub => {
+      if (typeof unsub === 'function') {
+        try { unsub(); } catch(e) { /* Silencia erros de fechamento de conexão */ }
+      }
+    });
   }
 }
 
@@ -26,6 +31,25 @@ export async function loadFromFirestore(customDate = null) {
   if (!navigator.onLine) { syncUI('', 'Offline — dados locais'); return; }
   syncUI('warn', 'Sincronizando...');
   detachListeners();
+
+  // ── CORREÇÃO: restaura pendentes e realizados do cache local ──
+  // S.pendentes inicia como [] a cada boot; sem isso os registros
+  // salvos antes de sincronizar somem ao recarregar a página ou
+  // ao re-autenticar.
+  const uid = S.session?.uid;
+  if (uid) {
+    const storedPend = LS.get('pendentes_' + uid);
+    if (Array.isArray(storedPend) && storedPend.length > 0) {
+      S.pendentes = storedPend;
+    }
+    // Realizado local serve de cache enquanto o Firestore não responde
+    const storedReal = LS.get('realizados_' + uid);
+    if (storedReal && typeof storedReal === 'object') {
+      S.realizados = { ...storedReal };
+    }
+  }
+  // ─────────────────────────────────────────────────────────────
+
   try {
     const collections = ['equipamentos', 'rendimentos', 'planoHoras', 'operacoesAgricolas', 'team_configs', 'teamMetadata'];
     for (const col of collections) {
@@ -59,9 +83,14 @@ export async function loadTodayRecords(customDate = null) {
   if (customDate) S.realizados = {};
 
   const allCols = ['herbicida', 'tratos', 'biomassa', 'preparo', 'linhaamarela', 'fertirrigacao'];
-  // AUTO-CORREÇÃO: Só assina coleções que o usuário tem permissão para ver (Abas)
-  const allowedCols = S.session?.Nivel === 'master' ? allCols :
-                      allCols.filter(c => S.session?.Abas?.includes(c));
+  const userAbas = S.session?.Abas || [];
+  const nivel = S.session?.Nivel || '';
+
+  // CORREÇÃO: inclui 'administrador' e normaliza maiúsculas/minúsculas nas Abas
+  const isPrivileged = ['master', 'administrador', 'admin'].includes(nivel.toLowerCase());
+  const allowedCols = isPrivileged
+    ? allCols
+    : allCols.filter(c => userAbas.map(a => a.toLowerCase()).includes(c.toLowerCase()));
 
   for (const col of allowedCols) {
     try {
@@ -83,7 +112,8 @@ export async function loadTodayRecords(customDate = null) {
           };
         });
         S.realizados = { ...S.realizados, ...batchReal };
-        LS.set('realizados', S.realizados);
+        const uid = S.session?.uid;
+        if (uid) LS.set('realizados_' + uid, S.realizados);
         refreshAll();
       }, (err) => {
         if (err.code !== 'permission-denied') console.warn(`[FB] Erro nos registros: ${col}`, err);
@@ -185,8 +215,10 @@ export async function sincronizarCampo() {
       await _enviarRegistroUnico(r);
       S.pendentes = S.pendentes.filter(p => p.id !== r.id);
     }
-    LS.set('pendentes', S.pendentes);
-    await loadTodayRecords();
+    // CORREÇÃO: persiste os pendentes restantes no LS com chave por UID
+    const uid = S.session?.uid || 'anon';
+    LS.set('pendentes_' + uid, S.pendentes);
+
     toast('Sincronização concluída!', 's');
     playSuccessSound();
     refreshAll();

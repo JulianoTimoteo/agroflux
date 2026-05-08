@@ -69,6 +69,7 @@ export function populateCampoFrotas() {
 
 export function setCampoEquipe(team) {
   S.campoEquipe = team;
+  if (auth.currentUser) LS.set('campoEquipe_' + auth.currentUser.uid, team);
   S.pages.pend = 1;
   populateCampoFrotas();
   renderPendentes();
@@ -189,37 +190,117 @@ export function _verificarMeta() {
 }
 
 export function limparCampo() {
-  ['cFrota','cTurno','cSub'].forEach(id => { const e = el(id); if (e) e.value = ''; });
+  ['cData','cFrota','cTurno','cSub'].forEach(id => { const e = el(id); if (e) e.value = ''; });
+  const dateIn = el('cData'); if (dateIn) { const d = new Date(); dateIn.value = d.toISOString().split('T')[0]; }
   el('cCodOp').innerHTML = '<option value="">Selecione...</option>';
   ['cModelo','cHoras','cHaDia','cMotivo','cAcao'].forEach(id => { const e = el(id); if (e) e.value = ''; });
   el('cExtraFields').innerHTML = '';
   el('planBox').style.display = 'none'; el('metaTag').innerHTML = ''; el('cSubDiv').style.display = 'none';
   document.querySelectorAll('.campo-erro').forEach(e => e.classList.remove('campo-erro'));
   ['cntMot','cntAcao'].forEach(id => txt(id, '0/300'));
+  
+  // Limpa o rascunho ao limpar o formulário manualmente
+  clearCampoDraft();
+  
   S.metaPlan = 0; populateCampoFrotas();
 }
 
+// ── Gerenciamento de Rascunho (Draft) ─────────────────────────
+export function saveCampoDraft() {
+  // Impede salvar rascunho se não houver usuário (ex: tela de login)
+  if (!auth.currentUser) return;
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const draft = {
+    data: gv('cData'), frota: gv('cFrota'), cod: gv('cCodOp'),
+    turno: gv('cTurno'), sub: gv('cSub'), horas: gv('cHoras'),
+    haDia: gv('cHaDia'), motivo: gv('cMotivo'), acao: gv('cAcao'),
+    extras: {}
+  };
+  document.querySelectorAll('.c-extra-in').forEach(i => { draft.extras[i.dataset.id] = i.value; });
+  LS.set('draft_campo_' + uid, draft);
+}
+
+export function restoreCampoDraft() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const d = LS.get('draft_campo_' + uid);
+  if (!d) return;
+  if (d.data) sv('cData', d.data);
+  
+  // Ordem crítica: Frota define Operações. Preenchemos em cascata.
+  if (d.frota) { 
+    sv('cFrota', d.frota); 
+    onFrotaChange(); 
+    if (d.cod) { 
+      sv('cCodOp', d.cod); 
+      onCodChange(); 
+    }
+  }
+  
+  if (d.turno) { sv('cTurno', d.turno); onTurnoChange(); }
+  if (d.sub) sv('cSub', d.sub);
+  if (d.horas) sv('cHoras', d.horas);
+  if (d.haDia) sv('cHaDia', d.haDia);
+  if (d.motivo) sv('cMotivo', d.motivo);
+  if (d.acao) sv('cAcao', d.acao);
+  
+  setTimeout(() => {
+    document.querySelectorAll('.c-extra-in').forEach(i => { if (d.extras?.[i.dataset.id]) i.value = d.extras[i.dataset.id]; });
+    _verificarMeta();
+  }, 500);
+}
+
+export function clearCampoDraft() {
+  const uid = auth.currentUser?.uid;
+  if (uid) LS.rm('draft_campo_' + uid);
+}
+
 function _validarFormCampo() {
-  const cod = gv('cCodOp'), op = gv('cOp'), fr = gv('cFrota'), mod = gv('cModelo'), turno = gv('cTurno'), sub = gv('cSub');
-  const horas = parseFloat(gv('cHoras')) || 0, haDia = parseFloat(gv('cHaDia')) || 0;
+  const dt = gv('cData'), cod = gv('cCodOp'), op = gv('cOp'), fr = gv('cFrota'), mod = gv('cModelo'), turno = gv('cTurno'), sub = gv('cSub');
+  
+  // Helper para ler números aceitando vírgula ou ponto
+  const getNum = (id) => parseFloat(gv(id).replace(',', '.')) || 0;
+  
+  const horas = getNum('cHoras'), haDia = getNum('cHaDia');
   const motivo = gv('cMotivo'), acao = gv('cAcao');
+
+  // Função auxiliar interna para evitar erro de classList em elementos nulos
+  const markErr = (id) => { const e = el(id); if (e) e.classList.add('campo-erro'); };
+
   document.querySelectorAll('.campo-erro').forEach(e => e.classList.remove('campo-erro'));
-  if (!fr || !cod || horas <= 0) {
-    if (!fr) el('cFrota').classList.add('campo-erro');
-    if (!cod) el('cCodOp').classList.add('campo-erro');
-    if (horas <= 0) el('cHoras').classList.add('campo-erro');
+
+  if (!dt || !fr || !cod || horas <= 0) {
+    if (!dt) markErr('cData');
+    if (!fr) markErr('cFrota');
+    if (!cod) markErr('cCodOp');
+    if (horas <= 0) markErr('cHoras');
     toast('Preencha os campos obrigatórios!', 'w'); return null;
   }
-  const rend = getRendimento(cod), hp = calcHP(cod, turno, sub), mp = (parseFloat(rend?.Rendimento) || 0) * hp;
-  const metaOk = mp > 0 && haDia >= mp;
+
+  // Sincroniza lógica de meta com a UI (considerando hectares e campos extras)
+  const rendObj = getRendimento(cod);
+  const atingiuHD = haDia >= S.metaPlan;
+  let atingiuExtras = true;
+  document.querySelectorAll('.c-extra-in').forEach(input => {
+    const metaExtra = parseFloat(rendObj?.extrasPlan?.[input.dataset.id]) || 0;
+    const realExtra = parseFloat(input.value.replace(',', '.')) || 0;
+    if (metaExtra > 0 && realExtra < metaExtra) atingiuExtras = false;
+  });
+
+  const metaOk = atingiuHD && atingiuExtras;
+
   if (!metaOk) {
-    if (!motivo || motivo === 'Meta Atingida!') { el('cMotivo').classList.add('campo-erro'); toast('Motivo obrigatório se a meta não for atingida!', 'e'); return null; }
-    if (!acao || acao === 'Meta Atingida!') { el('cAcao').classList.add('campo-erro'); toast('Ação Corretiva obrigatória!', 'e'); return null; }
+    if (!motivo || motivo === 'Meta Atingida!') { markErr('cMotivo'); toast('Motivo obrigatório se a meta não for atingida!', 'e'); return null; }
+    if (!acao || acao === 'Meta Atingida!') { markErr('cAcao'); toast('Ação Corretiva obrigatória!', 'e'); return null; }
   }
+
+  const formattedDate = dt.split('-').reverse().join('/');
   const extras = {};
-  document.querySelectorAll('.c-extra-in').forEach(input => { extras[input.dataset.id] = parseFloat(input.value) || 0; });
+  document.querySelectorAll('.c-extra-in').forEach(input => { extras[input.dataset.id] = parseFloat(input.value.replace(',', '.')) || 0; });
+
   return {
-    id: Date.now(), data: todayBR(), codOperacao: cod, descricao: op,
+    id: Date.now(), data: formattedDate, codOperacao: cod, descricao: op,
     frota: fr, modelo: mod, turno, haDia, horasReal: horas,
     motivo: motivo || '--', acao: acao || '--', observacao: '--',
     timestamp: new Date().toISOString(),
@@ -257,8 +338,13 @@ export async function salvarCampo() {
   }
   const key = `${String(finalRecord.codOperacao).trim()}|${(finalRecord.modelo || '').trim()}|${String(finalRecord.frota).trim()}`;
   S.realizados[key] = { horas: finalRecord.horasReal, haDia: finalRecord.haDia, motivo: finalRecord.motivo, acaoCorretiva: finalRecord.acao, obs: finalRecord.observacao, extras: finalRecord.extras };
-  LS.set('realizados', S.realizados);
-  LS.set('pendentes', S.pendentes);
+  if (auth.currentUser) {
+    LS.set('realizados_' + auth.currentUser.uid, S.realizados);
+    LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
+  }
+  
+  // Limpa o rascunho após salvar com sucesso na lista de pendentes
+  clearCampoDraft();
   limparCampo(); refreshAll(); playSuccessSound();
 }
 
@@ -333,7 +419,7 @@ export function editarPend(id) {
     });
   }, 50);
   S.pendentes.splice(idx, 1);
-  LS.set('pendentes', S.pendentes);
+  if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   renderPendentes();
   toast('Dados carregados para edição.', 's');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -347,7 +433,7 @@ export function pagPend(d) {
 export async function delPend(id) {
   if (!(await customConfirm('Excluir', 'Deseja excluir este registro pendente?'))) return;
   S.pendentes = S.pendentes.filter(p => p.id !== id);
-  LS.set('pendentes', S.pendentes);
+  if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   renderPendentes();
   toast('Removido.', 'w');
 }
@@ -367,7 +453,7 @@ export function initCampoMobile() {
   if (!campoSection) return;
 
   // ── Sequência fixa de campos para navegação por Enter/Next ───
-  const FIELD_ORDER = ['cFrota', 'cCodOp', 'cTurno', 'cSub', 'cHoras', 'cHaDia', 'cMotivo', 'cAcao'];
+  const FIELD_ORDER = ['cData', 'cFrota', 'cCodOp', 'cTurno', 'cSub', 'cHoras', 'cHaDia', 'cMotivo', 'cAcao'];
 
   // Retorna a sequência atual levando em conta campos ocultos (ex: cSub)
   function getVisibleSequence() {
@@ -489,10 +575,10 @@ export function initCampoMobile() {
   });
 
   // ── Auto-avanço após selecionar dropdown (só em touch) ──────
-  // Avança para o próximo campo automaticamente após escolher
-  // uma opção no select nativo do celular.
+  // Além de avançar, garante que o rascunho seja salvo ao mudar selects
+  // em dispositivos touch onde o evento de 'input' pode ser inconsistente.
   if ('ontouchstart' in window) {
-    const mobileSelects = ['cFrota', 'cCodOp', 'cTurno', 'cSub'];
+    const mobileSelects = ['cData', 'cFrota', 'cCodOp', 'cTurno', 'cSub'];
     mobileSelects.forEach(id => {
       const e = el(id);
       if (!e) return;
@@ -506,8 +592,14 @@ export function initCampoMobile() {
 
   // ── Indicador de progresso do formulário (mobile) ───────────
   _atualizarProgressoCampo();
-  campoSection.addEventListener('change', _atualizarProgressoCampo);
-  campoSection.addEventListener('input', _atualizarProgressoCampo);
+  
+  const updateAll = () => {
+    _atualizarProgressoCampo();
+    saveCampoDraft();
+  };
+
+  campoSection.addEventListener('change', updateAll);
+  campoSection.addEventListener('input', updateAll);
 }
 
 // Barra de progresso visual do formulário no mobile
@@ -516,6 +608,7 @@ function _atualizarProgressoCampo() {
   if (!indicator) return;
 
   const campos = [
+    { id: 'cData',   fn: v => !!v },
     { id: 'cFrota',  fn: v => !!v },
     { id: 'cCodOp',  fn: v => !!v },
     { id: 'cTurno',  fn: v => !!v },

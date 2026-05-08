@@ -22,6 +22,7 @@ import {
 } from './realtime.js';
 import { renderTabs, activateTab } from './navigation.js';
 import { refreshAll } from './refresh.js';
+import { restoreCampoDraft } from './lancamento.js';
 
 // ── Telas: app, login, setup ──────────────────────────────────
 export function showApp() {
@@ -47,7 +48,6 @@ export function showLogin() {
   el('app').style.display = 'none';
   loading(false);
 
-  // Reseta o estado do botão de login para permitir nova tentativa
   const btn = el('loginBtn');
   if (btn) {
     btn.disabled = false;
@@ -116,6 +116,7 @@ async function loadUserProfile(firebaseUser) {
     const userRef = doc(db, 'usuarios', firebaseUser.uid);
     const snap = await getDoc(userRef);
     let profile;
+    const uid = firebaseUser.uid;
     if (!snap.exists()) {
       profile = {
         Nome: firebaseUser.displayName || firebaseUser.email.split('@')[0],
@@ -137,14 +138,26 @@ async function loadUserProfile(firebaseUser) {
       return;
     }
 
-    S.session = { ...profile, uid: firebaseUser.uid, admin: profile.admin || profile.Nivel === 'master', Abas: profile.Abas || [], Equipes: profile.Equipes || [] };
+    S.session = { ...profile, uid: uid, admin: profile.admin || profile.Nivel === 'master', Abas: profile.Abas || [], Equipes: profile.Equipes || [] };
     await setupInitialData();
     _loadLocalCache();
     S.teamMetadata = LS.get('teamMetadata', []);
-    S.realizados   = LS.get('realizados',   {});
-    S.pendentes    = LS.get('pendentes',    []);
+    S.realizados   = LS.get('realizados_' + uid,   {});
+    S.pendentes    = LS.get('pendentes_' + uid,    []);
     S.usuarios     = LS.get('usuarios',     []);
+    S.campoEquipe  = LS.get('campoEquipe_' + uid,  '');
+    if (!S.campoEquipe && profile.Equipes?.length) S.campoEquipe = profile.Equipes[0];
+
+    // Garante que pendentes apareçam na tabela antes da sincronização
+    S.pendentes.forEach(p => {
+      const key = `${String(p.codOperacao).trim()}|${(p.modelo || '').trim()}|${String(p.frota).trim()}`;
+      if (!S.realizados[key]) {
+        S.realizados[key] = { horas: p.horasReal, haDia: p.haDia, motivo: p.motivo, acaoCorretiva: p.acao, obs: p.observacao, extras: p.extras };
+      }
+    });
+
     showApp();
+    restoreCampoDraft(); // Restaura o rascunho APÓS o app estar visível e populado
     loadFromFirestore();
     updateSyncTimerUI();
   } catch (e) {
@@ -186,22 +199,18 @@ export async function logout() {
     const ok = await customConfirm('Sair', 'Deseja encerrar sua sessão?');
     if (!ok) return;
 
-    // 1. Para os listeners imediatamente
-    detachListeners();
-    
-    // 2. Limpa o estado em memória para evitar que o Firestore tente re-sincronizar
-    S.session = null;
-    S.realizados = {};
-    
-    // 3. Desloga do Firebase
-    await signOut(auth);
+    const uid = S.session?.uid;
+    if (uid) LS.set('pendentes_' + uid, S.pendentes);
 
-    // Limpeza seletiva: remove dados da sessão mas preserva credenciais (Lembrar Senha)
-    const savedUser = localStorage.getItem('ht_saved_user');
-    const savedPass = localStorage.getItem('ht_saved_pass');
-    localStorage.clear();
-    if (savedUser) localStorage.setItem('ht_saved_user', savedUser);
-    if (savedPass) localStorage.setItem('ht_saved_pass', savedPass);
+    // Para os listeners antes de deslogar
+    detachListeners();
+    S.session = null;
+    S.pendentes = [];
+    S.realizados = {};
+    await signOut(auth).catch(() => {});
+
+    // Limpa apenas o cache de visualização do usuário que está saindo
+    if (uid) LS.rm('realizados_' + uid);
 
     sessionStorage.clear();
     showLogin();
@@ -247,13 +256,12 @@ export async function salvarGerenciar() {
 export function initAuthForms() {
   const loginForm = el('loginForm');
 
-  // --- LÓGICA DE LEMBRAR SENHA (AUTO-FILL) ---
   const savedUser = localStorage.getItem('ht_saved_user');
   const savedPass = localStorage.getItem('ht_saved_pass');
   if (savedUser && el('loginLogin')) sv('loginLogin', savedUser);
   if (savedPass && el('loginPass')) {
-    try { 
-      sv('loginPass', atob(savedPass)); 
+    try {
+      sv('loginPass', atob(savedPass));
       const saveCheck = el('loginSave');
       if (saveCheck) saveCheck.checked = true;
     } catch(e) {
@@ -272,18 +280,15 @@ export function initAuthForms() {
       if (iconBox) iconBox.classList.remove('err');
 
       try {
-        // --- LÓGICA DE MANTER CONECTADO (PERSISTÊNCIA) ---
         const stayConnected = el('loginRemember')?.checked ?? true;
         await setPersistence(auth, stayConnected ? browserLocalPersistence : browserSessionPersistence);
 
-        // 2. Realiza o login
         await loginComUsuario(login, pwd);
 
-        // --- LÓGICA DE SALVAR CREDENCIAIS ---
         const shouldSave = el('loginSave')?.checked;
         if (shouldSave) {
           localStorage.setItem('ht_saved_user', login);
-          localStorage.setItem('ht_saved_pass', btoa(pwd)); // Obscurece a senha em base64
+          localStorage.setItem('ht_saved_pass', btoa(pwd));
         } else {
           localStorage.removeItem('ht_saved_user');
           localStorage.removeItem('ht_saved_pass');
