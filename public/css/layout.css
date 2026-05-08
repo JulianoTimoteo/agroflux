@@ -94,7 +94,7 @@ tbody tr:nth-child(even){background:#fafcfa}
 .mono{font-family:'Courier New',monospace;font-size:.8rem}
 .bold{font-weight:700}
 
-/* ── Modais ───────────────────────────────────────────────────── */
+/* ── Modais — desktop ─────────────────────────────────────────── */
 .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(3px);padding:14px}
 .modal.open{display:flex}
 .modal-content{background:#fff;border-radius:var(--r-lg);padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:var(--sh-lg);animation:mIn .2s ease}
@@ -120,6 +120,54 @@ tbody tr:nth-child(even){background:#fafcfa}
   font-size: 1.2rem; box-shadow: var(--sh-lg);
 }
 @media(max-width:768px){
+  .user-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 10px 16px;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 300;
+    background: linear-gradient(135deg, #071a09 0%, #0d210a 100%);
+  }
+
+  /* Linha 1: Folha (logo) + Avatar + Nome */
+  .ub-left {
+    width: 100%;
+    flex: none;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+  .ub-left img { height: 26px; width: auto; flex-shrink: 0; } /* Ajuste para a logo/folha */
+  .ub-avatar { width: 32px; height: 32px; flex-shrink: 0; font-size: 0.85rem; border: 1.5px solid rgba(255,255,255,0.2); }
+  .ub-name { font-size: 0.9rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ub-role { display: none; } /* Esconde o cargo para ganhar espaço na Row 1 */
+
+  /* Linha 2: Status + Botões de Ação */
+  .ub-right {
+    width: 100%;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Distribui entre Conectado e Botões */
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 2px 0 4px;
+  }
+  .ub-right::-webkit-scrollbar { display: none; }
+  
+  .sync-badge { font-size: 0.62rem; flex-shrink: 0; margin-right: 4px; }
+  .ub-btn {
+    padding: 6px 10px;
+    font-size: 0.65rem;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
   .tabs-nav {
     position: fixed; bottom: 85px; left: 16px; flex-direction: column;
     background: var(--card); padding: 12px; border-radius: var(--r-lg);
@@ -140,4 +188,115 @@ tbody tr:nth-child(even){background:#fafcfa}
 }
 @media(max-width:480px){
   .form-grid{grid-template-columns:1fr!important}
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAIS MOBILE — Bottom Sheet vertical
+   Substitui o modal horizontal por um painel que sobe de baixo,
+   full-width, com layout de coluna única.
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes slideUpModal {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@media (max-width: 768px) {
+
+  /* Overlay: ancora na base da tela */
+  .modal {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  /* Painel: sobe de baixo, ocupa toda a largura */
+  .modal-content {
+    border-radius: 20px 20px 0 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 92vh !important;
+    padding: 20px 16px 28px !important;
+    animation: slideUpModal .28s cubic-bezier(.32, .72, 0, 1) !important;
+    /* Alça visual no topo (estilo nativo iOS/Android) */
+    position: relative;
+  }
+  .modal-content::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: -8px auto 16px;
+  }
+
+  /* Título do modal no mobile */
+  .modal-content h3 {
+    font-size: 1rem !important;
+    margin-bottom: 14px !important;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Formulário dentro do modal: 1 coluna */
+  .modal-content .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  /* Inputs dentro do modal: maiores para toque */
+  .modal-content .fg select,
+  .modal-content .fg input[type=text],
+  .modal-content .fg input[type=number],
+  .modal-content .fg input[type=email],
+  .modal-content .fg input[type=password],
+  .modal-content .fg textarea {
+    padding: 12px 14px;
+    font-size: .9rem;
+    border-radius: 12px;
+    min-height: 46px;
+  }
+
+  .modal-content .fg label {
+    font-size: .68rem;
+    margin-bottom: 5px;
+  }
+
+  /* Botões do modal: empilhados, full-width */
+  .modal-btns {
+    flex-direction: column-reverse !important;
+    gap: 10px !important;
+    margin-top: 18px !important;
+    padding-top: 14px !important;
+  }
+  .modal-btns .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 14px 20px !important;
+    font-size: .88rem !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+  }
+  /* Botão primário fica no topo (invertido por column-reverse) */
+  .modal-btns .btn-primary,
+  .modal-btns .btn-success {
+    box-shadow: 0 4px 14px rgba(46, 125, 50, .3);
+  }
+
+  /* Lista de operações dentro do modal: altura menor no mobile */
+  .modal-content .custom-op-list {
+    min-height: 120px !important;
+    max-height: 160px !important;
+    border-radius: 10px;
+  }
+
+  /* Toast no mobile: acima do FAB */
+  .toast {
+    bottom: 90px;
+    right: 14px;
+    left: 14px;
+    max-width: 100%;
+    font-size: .8rem;
+  }
 }

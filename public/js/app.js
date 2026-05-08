@@ -149,6 +149,20 @@ document.addEventListener('click', e => {
     if (e.target.id === 'mConfirm') { closeConfirm(false); return; }
     e.target.classList.remove('open');
   }
+
+  // Fechar menu mobile ao clicar fora
+  const nav = document.getElementById('tabsNav');
+  if (nav && nav.classList.contains('mobile-open')) {
+    // Usamos o caminho completo do clique para detectar o botão ou o menu.
+    // Isso evita que o menu feche sozinho quando o ícone interno do botão é trocado/removido.
+    const path = e.composedPath ? e.composedPath() : [];
+    const clicouNoBotao = path.some(el => el.id === 'mobileNavBtn');
+    const clicouNoMenu  = path.some(el => el.id === 'tabsNav');
+
+    if (!clicouNoBotao && !clicouNoMenu) {
+      toggleMobileNav();
+    }
+  }
 });
 
 // ── PWA install prompt ────────────────────────────────────────

@@ -20,6 +20,9 @@ import { refreshAll } from './refresh.js';
 
 // ── Tabs de equipe e seleção de frota ─────────────────────────
 export function populateCampoFrotas() {
+  // Inicializa melhorias mobile na primeira chamada
+  initCampoMobile();
+
   const s = S.session; const equipesPermitidas = s?.Equipes || [];
   const teamsData = getUniqueTeams();
   const teamMap = {}; teamsData.forEach(t => teamMap[norm(t).replace(/\s+/g, '')] = t);
@@ -285,17 +288,17 @@ export function renderPendentes() {
 
   tbody.innerHTML = page.length ? page.map(r =>
     `<tr>
-      <td><input type="checkbox" class="pend-check" data-id="${r.id}"></td>
-      <td class="mono">${r.codOperacao}</td>
-      <td class="td-l">${tc(r.descricao)}</td>
-      <td>${r.frota}</td>
-      <td class="td-l">${tc(r.modelo)}</td>
-      <td>${fmt2(r.horasReal)}</td>
-      <td>${fmt2(r.haDia)}</td>
-      ${extraCols.map(c => `<td>${fmt2(r.extras?.[c.id] || 0)}</td>`).join('')}
-      <td style="font-size:.6rem">${r.data||''}</td>
-      <td><span class="badge bdg-pendente">Pendente</span></td>
-      <td>
+      <td data-label="Selecionar"><input type="checkbox" class="pend-check" data-id="${r.id}"></td>
+      <td data-label="Cód." class="mono">${r.codOperacao}</td>
+      <td data-label="Operação" class="td-l">${tc(r.descricao)}</td>
+      <td data-label="Frota">${r.frota}</td>
+      <td data-label="Modelo" class="td-l">${tc(r.modelo)}</td>
+      <td data-label="Horas">${fmt2(r.horasReal)}</td>
+      <td data-label="Há/Dia">${fmt2(r.haDia)}</td>
+      ${extraCols.map(c => `<td data-label="${c.label}">${fmt2(r.extras?.[c.id] || 0)}</td>`).join('')}
+      <td data-label="Data" style="font-size:.6rem">${r.data||''}</td>
+      <td data-label="Status"><span class="badge bdg-pendente">Pendente</span></td>
+      <td data-label="Ação">
         <button class="btn btn-warning btn-xs" onclick="window.HT && HT.editarPend(${r.id})"><i class="fas fa-edit"></i></button>
         <button class="btn btn-danger btn-xs" onclick="window.HT && HT.delPend(${r.id})"><i class="fas fa-trash"></i></button>
       </td>
@@ -341,4 +344,186 @@ export async function delPend(id) {
   LS.set('pendentes', S.pendentes);
   renderPendentes();
   toast('Removido.', 'w');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// initCampoMobile — Experiência especial da aba Campo no celular
+// Chamado automaticamente em populateCampoFrotas (primeira vez)
+// ═══════════════════════════════════════════════════════════════
+let _campoMobileReady = false;
+
+export function initCampoMobile() {
+  // Só inicializa uma vez e somente em dispositivos mobile
+  if (_campoMobileReady) return;
+  _campoMobileReady = true;
+
+  const campoSection = el('tab-campo');
+  if (!campoSection) return;
+
+  // ── Sequência fixa de campos para navegação por Enter/Next ───
+  const FIELD_ORDER = ['cFrota', 'cCodOp', 'cTurno', 'cSub', 'cHoras', 'cHaDia', 'cMotivo', 'cAcao'];
+
+  // Retorna a sequência atual levando em conta campos ocultos (ex: cSub)
+  function getVisibleSequence() {
+    return FIELD_ORDER.filter(id => {
+      const e = el(id);
+      if (!e) return false;
+      if (id === 'cSub') return el('cSubDiv')?.style.display !== 'none';
+      return true;
+    });
+  }
+
+  // Foca no próximo campo da sequência
+  function focusNext(fromIdOrEl) {
+    const seq   = getVisibleSequence();
+    const extras = Array.from(document.querySelectorAll('.c-extra-in'));
+
+    // Monta sequência completa: campos fixos + extras entre cHaDia e cMotivo
+    const haDiaIdx = seq.indexOf('cHaDia');
+    const full = [
+      ...seq.slice(0, haDiaIdx + 1),
+      ...extras,                           // inputs dinâmicos
+      ...seq.slice(haDiaIdx + 1)
+    ];
+
+    // Descobre índice atual
+    let idx;
+    if (typeof fromIdOrEl === 'string') {
+      idx = full.indexOf(fromIdOrEl);
+    } else {
+      idx = full.indexOf(fromIdOrEl);      // elemento DOM dos extras
+    }
+
+    if (idx === -1 || idx >= full.length - 1) return;
+
+    const next = full[idx + 1];
+
+    if (typeof next === 'string') {
+      const target = el(next);
+      if (!target) return;
+      target.focus();
+      // Rola suavemente para o campo com margem de cabeçalho
+      setTimeout(() => {
+        const rect = target.getBoundingClientRect();
+        if (rect.top < 80 || rect.bottom > window.innerHeight - 80) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 80);
+    } else if (next instanceof Element) {
+      next.focus();
+      setTimeout(() => {
+        const rect = next.getBoundingClientRect();
+        if (rect.top < 80 || rect.bottom > window.innerHeight - 80) {
+          next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 80);
+    }
+  }
+
+  // ── Efeito zoom/ênfase no campo com foco ────────────────────
+  campoSection.addEventListener('focusin', (e) => {
+    const inp = e.target;
+    if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(inp.tagName)) return;
+
+    // Remove ênfase anterior
+    campoSection.querySelectorAll('.fg.campo-focused').forEach(fg => fg.classList.remove('campo-focused'));
+
+    // Adiciona ênfase no .fg pai
+    const fg = inp.closest('.fg');
+    if (fg) {
+      fg.classList.add('campo-focused');
+      // Rola para o campo se estiver fora da área visível
+      setTimeout(() => {
+        const rect = fg.getBoundingClientRect();
+        if (rect.top < 80 || rect.bottom > window.innerHeight - 100) {
+          fg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 150);
+    }
+  }, true);
+
+  // Remove ênfase ao sair do campo
+  campoSection.addEventListener('focusout', (e) => {
+    const fg = e.target.closest('.fg');
+    if (!fg) return;
+    setTimeout(() => {
+      if (!fg.contains(document.activeElement)) {
+        fg.classList.remove('campo-focused');
+      }
+    }, 150);
+  }, true);
+
+  // ── Navegação por Enter / Next no teclado ───────────────────
+  campoSection.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const t = e.target;
+
+    if (t.tagName === 'TEXTAREA') {
+      // Shift+Enter = quebra de linha normal; Enter simples = próximo campo
+      if (e.shiftKey) return;
+      e.preventDefault();
+      focusNext(t.id);
+      return;
+    }
+
+    if (t.tagName === 'INPUT') {
+      e.preventDefault();
+      if (t.classList.contains('c-extra-in')) {
+        focusNext(t);    // elemento DOM para extras dinâmicos
+      } else {
+        focusNext(t.id);
+      }
+      return;
+    }
+
+    if (t.tagName === 'SELECT') {
+      e.preventDefault();
+      focusNext(t.id);
+    }
+  });
+
+  // ── Auto-avanço após selecionar dropdown (só em touch) ──────
+  // Avança para o próximo campo automaticamente após escolher
+  // uma opção no select nativo do celular.
+  if ('ontouchstart' in window) {
+    const mobileSelects = ['cFrota', 'cCodOp', 'cTurno', 'cSub'];
+    mobileSelects.forEach(id => {
+      const e = el(id);
+      if (!e) return;
+      e.addEventListener('change', () => {
+        // Aguarda os onchange originais (HT.onFrotaChange etc.) terminarem
+        setTimeout(() => focusNext(id), 350);
+      });
+    });
+  }
+
+  // ── Indicador de progresso do formulário (mobile) ───────────
+  _atualizarProgressoCampo();
+  campoSection.addEventListener('change', _atualizarProgressoCampo);
+  campoSection.addEventListener('input', _atualizarProgressoCampo);
+}
+
+// Barra de progresso visual do formulário no mobile
+function _atualizarProgressoCampo() {
+  const indicator = el('campoProgressBar');
+  if (!indicator) return;
+
+  const campos = [
+    { id: 'cFrota',  fn: v => !!v },
+    { id: 'cCodOp',  fn: v => !!v },
+    { id: 'cTurno',  fn: v => !!v },
+    { id: 'cHoras',  fn: v => parseFloat(v) > 0 },
+    { id: 'cHaDia',  fn: v => parseFloat(v) > 0 },
+  ];
+
+  const total     = campos.length;
+  const preenchidos = campos.filter(c => c.fn(gv(c.id))).length;
+  const pct       = Math.round((preenchidos / total) * 100);
+
+  indicator.style.width = pct + '%';
+  indicator.style.background = pct === 100
+    ? 'var(--g600)'
+    : pct >= 60
+    ? '#ffa726'
+    : 'var(--b800)';
 }
