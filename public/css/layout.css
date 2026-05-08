@@ -24,7 +24,7 @@
 /* ── Page wrap + Tabs ─────────────────────────────────────────── */
 .page-wrap{max-width:1820px;margin:0 auto;padding:14px 16px}
 .tabs-nav{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;position:sticky;top:58px;z-index:150;background:var(--bg);padding:10px 0}
-.tab-btn{background:#fff;border:1.5px solid var(--border);padding:7px 14px;border-radius:8px !important;font-size:.75rem;font-weight:600;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;gap:6px;color:var(--g900);box-shadow:0 1px 4px rgba(0,0,0,.05);white-space:nowrap}
+.tab-btn{background:#fff;border:1.5px solid var(--border);padding:7px 14px;border-radius:0 !important;font-size:.75rem;font-weight:600;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;gap:6px;color:var(--g900);box-shadow:0 1px 4px rgba(0,0,0,.05);white-space:nowrap}
 .tab-btn i{font-size:.8rem}
 .tab-btn.active{background:var(--g800);color:#fff;border-color:var(--g800);box-shadow:0 3px 12px rgba(46,125,50,.3)}
 .tab-btn:hover:not(.active){background:var(--g100);border-color:var(--g600)}
@@ -40,7 +40,7 @@
 .info-note{background:var(--g50);border-left:3px solid var(--g700);padding:9px 13px;border-radius:0 10px 10px 0;margin-bottom:14px;font-size:.76rem;color:var(--g900);line-height:1.6}
 
 /* ── Botões ───────────────────────────────────────────────────── */
-.btn{padding:8px 16px;border-radius:8px;border:none;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--tr);font-size:.75rem;white-space:nowrap;line-height:1}
+.btn{padding:8px 16px;border-radius:0;border:none;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--tr);font-size:.75rem;white-space:nowrap;line-height:1}
 .btn:active{transform:scale(.96)}
 .btn-primary{background:var(--g800);color:#fff}.btn-primary:hover{background:var(--g900)}
 .btn-success{background:#2e7d32;color:#fff}.btn-success:hover{background:#1b5e20}
@@ -62,7 +62,7 @@
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin-bottom:12px}
 .fg{display:flex;flex-direction:column}
 .fg label{font-size:.65rem;font-weight:700;margin-bottom:4px;color:var(--g800);letter-spacing:.05em;text-transform:uppercase}
-.fg select,.fg input[type=text],.fg input[type=number],.fg input[type=email],.fg input[type=password]{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:0;font-size:.83rem;background:#fff;outline:none;transition:all var(--tr);color:var(--text)}
+.fg select,.fg input[type=text],.fg input[type=number],.fg input[type=email],.fg input[type=password]{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:0 !important;font-size:.83rem;background:#fff;outline:none;transition:all var(--tr);color:var(--text)}
 .fg select:focus,.fg input:focus{border-color:var(--g700);box-shadow:0 0 0 3px rgba(46,125,50,.1)}
 .fg input[readonly]{background:#f0f4f0;color:#777}
 .fg textarea{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;resize:vertical;min-height:62px;outline:none;transition:all var(--tr)}
