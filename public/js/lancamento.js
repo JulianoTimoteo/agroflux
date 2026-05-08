@@ -85,7 +85,8 @@ export function onFrotaChange() {
   const extras = config.filter(c => {
     const lbl = (c.label || '').toLowerCase();
     return c.type !== 'system' && !['had','htr','hah'].includes(c.id) &&
-           !lbl.includes('há/dia') && !lbl.includes('horas trab') && !lbl.includes('há/h');
+           !lbl.includes('há/dia') && !lbl.includes('horas trab') && !lbl.includes('há/h') &&
+           c.showReal !== false;
   });
   el('cExtraFields').innerHTML = extras.map(c => `
     <div class="fg"><label>${c.label} (Real.)</label><input type="number" step="0.01" class="c-extra-in" data-id="${c.id}" oninput="window.HT && HT._verificarMeta()" placeholder="0,00"></div>
@@ -131,7 +132,10 @@ function _atualizarPlan() {
   txt('pbHah', fmt2(rend)); txt('pbHoras', fmt2(hp)); txt('pbHaDia', fmt2(hdp));
   const config = S.teamConfigs[S.campoEquipe] || [];
   const extras = config.filter(c => c.type !== 'system');
-  el('pbExtraMetas').innerHTML = extras.map(c => `
+  // Exibe apenas as metas extras que possuem valor planejado definido (> 0) no painel azul
+  // Exibe apenas as metas extras que possuem valor planejado definido E que devem ser mostradas no planejado
+  const extrasComMeta = extras.filter(c => c.showPlan !== false && (parseFloat(rendObj?.extrasPlan?.[c.id]) || 0) > 0);
+  el('pbExtraMetas').innerHTML = extrasComMeta.map(c => `
     <div class="pbi"><label>${c.label} Plan.</label><span>${fmt2(rendObj?.extrasPlan?.[c.id] || 0)}</span></div>
   `).join('');
   el('planBox').style.display = 'flex';

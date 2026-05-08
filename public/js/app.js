@@ -69,7 +69,7 @@ import {
 // ── Modal "Configurar Colunas por Equipe" ─────────────────────
 import {
   abrirTeamConfig, limparTeamConfig, renderTeamConfigCols,
-  updateColLabel, moveCol, addTeamCol, removeTeamCol
+  updateColLabel, moveCol, addTeamCol, removeTeamCol, updateColSetting
 } from './config-colunas.js';
 
 // ── Auth (login, logout, perfil, conta) ───────────────────────
@@ -108,7 +108,7 @@ window.HT = {
 
   // Modal de configuração de colunas
   abrirTeamConfig, renderTeamConfigCols, onOpTurnoChange,
-  addTeamCol, removeTeamCol, moveCol, updateColLabel, limparTeamConfig,
+  addTeamCol, removeTeamCol, moveCol, updateColLabel, updateColSetting, limparTeamConfig,
 
   // Tabs e listeners
   activateTab, detachListeners,

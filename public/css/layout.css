@@ -17,14 +17,14 @@
 .sync-dot.ok{background:#4caf50;box-shadow: 0 0 5px #4caf50}
 .sync-dot.err{background:#f44336}
 .sync-dot.warn{background:#ff9800;animation:pulse 1.2s ease infinite}
-.ub-btn{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);border-radius:20px;padding:5px 11px;font-size:.7rem;transition:all var(--tr);display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
-.ub-btn:hover{background:rgba(255,255,255,.17)}
+.ub-btn{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);border-radius:8px;padding:5px 11px;font-size:.7rem;transition:all var(--tr);display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
+.ub-btn:hover{background:rgba(255,255,255,.17);border-color:rgba(255,255,255,0.4)}
 .ub-btn.danger:hover{background:rgba(211,47,47,.3);border-color:#d32f2f;color:#ff8a80}
 
 /* ── Page wrap + Tabs ─────────────────────────────────────────── */
 .page-wrap{max-width:1820px;margin:0 auto;padding:14px 16px}
 .tabs-nav{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px;position:sticky;top:58px;z-index:150;background:var(--bg);padding:10px 0}
-.tab-btn{background:#fff;border:1.5px solid var(--border);padding:7px 14px;border-radius:30px;font-size:.75rem;font-weight:600;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;gap:6px;color:var(--g900);box-shadow:0 1px 4px rgba(0,0,0,.05);white-space:nowrap}
+.tab-btn{background:#fff;border:1.5px solid var(--border);padding:7px 14px;border-radius:8px !important;font-size:.75rem;font-weight:600;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;gap:6px;color:var(--g900);box-shadow:0 1px 4px rgba(0,0,0,.05);white-space:nowrap}
 .tab-btn i{font-size:.8rem}
 .tab-btn.active{background:var(--g800);color:#fff;border-color:var(--g800);box-shadow:0 3px 12px rgba(46,125,50,.3)}
 .tab-btn:hover:not(.active){background:var(--g100);border-color:var(--g600)}
@@ -40,7 +40,7 @@
 .info-note{background:var(--g50);border-left:3px solid var(--g700);padding:9px 13px;border-radius:0 10px 10px 0;margin-bottom:14px;font-size:.76rem;color:var(--g900);line-height:1.6}
 
 /* ── Botões ───────────────────────────────────────────────────── */
-.btn{padding:8px 16px;border-radius:30px;border:none;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--tr);font-size:.75rem;white-space:nowrap;line-height:1}
+.btn{padding:8px 16px;border-radius:8px;border:none;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--tr);font-size:.75rem;white-space:nowrap;line-height:1}
 .btn:active{transform:scale(.96)}
 .btn-primary{background:var(--g800);color:#fff}.btn-primary:hover{background:var(--g900)}
 .btn-success{background:#2e7d32;color:#fff}.btn-success:hover{background:#1b5e20}
@@ -121,52 +121,57 @@ tbody tr:nth-child(even){background:#fafcfa}
 }
 @media(max-width:768px){
   .user-bar {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 10px 16px;
-    gap: 12px;
-    position: sticky;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 8px 12px !important;
+    gap: 10px !important;
+    position: sticky !important;
     top: 0;
-    z-index: 300;
-    background: linear-gradient(135deg, #071a09 0%, #0d210a 100%);
+    background: linear-gradient(135deg, #071a09 0%, #0d210a 100%) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
   }
 
   /* Linha 1: Folha (logo) + Avatar + Nome */
   .ub-left {
-    width: 100%;
-    flex: none;
-    justify-content: flex-start;
-    gap: 10px;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 8px !important;
   }
-  .ub-left img { height: 26px; width: auto; flex-shrink: 0; } /* Ajuste para a logo/folha */
-  .ub-avatar { width: 32px; height: 32px; flex-shrink: 0; font-size: 0.85rem; border: 1.5px solid rgba(255,255,255,0.2); }
-  .ub-name { font-size: 0.9rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ub-left img { 
+    height: 24px !important; width: auto !important; flex-shrink: 0 !important;
+    mix-blend-mode: normal; /* Logo transparente não precisa de blend */
+  }
+  .ub-avatar { width: 30px !important; height: 30px !important; flex-shrink: 0 !important; font-size: 0.8rem !important; border: 1.5px solid rgba(255,255,255,0.2) !important; }
+  .ub-name { font-size: 0.85rem !important; flex: 1 !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; color: #fff !important; }
   .ub-role { display: none; } /* Esconde o cargo para ganhar espaço na Row 1 */
 
   /* Linha 2: Status + Botões de Ação */
   .ub-right {
-    width: 100%;
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* Distribui entre Conectado e Botões */
-    gap: 6px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    padding: 2px 0 4px;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+    overflow-x: auto !important;
+    padding: 2px 0 4px !important;
+    scrollbar-width: none !important;
   }
-  .ub-right::-webkit-scrollbar { display: none; }
+  .ub-right::-webkit-scrollbar { display: none !important; }
   
-  .sync-badge { font-size: 0.62rem; flex-shrink: 0; margin-right: 4px; }
+  .sync-badge { font-size: 0.58rem !important; flex: 0 0 auto !important; margin-right: 4px !important; color: rgba(255,255,255,0.5) !important; }
   .ub-btn {
-    padding: 6px 10px;
-    font-size: 0.65rem;
-    flex-shrink: 0;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 5px 8px !important;
+    font-size: 0.62rem !important;
+    flex: 0 0 auto !important;
+    border-radius: 8px !important;
+    background: rgba(255,255,255,0.1) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    color: #fff !important;
   }
+  .ub-btn i { font-size: 0.68rem !important; }
 
   .tabs-nav {
     position: fixed; bottom: 85px; left: 16px; flex-direction: column;

@@ -26,17 +26,18 @@ export function renderHerbtratosTable() {
     { id: 'htr', label: 'Horas Trab.', type: 'system' },
     { id: 'had', label: 'Há/Dia', type: 'system' }
   ];
-  const numCols = config.length;
+  const planCols = config.filter(c => c.showPlan !== false);
+  const realCols = config.filter(c => c.showReal !== false);
 
   thead.innerHTML = `
     <tr>
       <th rowspan="2" class="th-base">Cód.</th><th rowspan="2" class="th-base">Operação</th><th rowspan="2" class="th-base">Frota</th><th rowspan="2" class="th-base">Modelo</th><th rowspan="2" class="th-base">Turno</th>
-      <th colspan="${numCols}" class="th-plan">PLANEJADO</th>
-      <th colspan="${numCols + 3}" class="th-real">REALIZADO</th>
+      <th colspan="${planCols.length}" class="th-plan">PLANEJADO</th>
+      <th colspan="${realCols.length + 3}" class="th-real">REALIZADO</th>
     </tr>
     <tr>
-      ${config.map(c => `<th class="th-plan">${c.label}</th>`).join('')}
-      ${config.map(c => `<th class="th-real">${c.label}</th>`).join('')}
+      ${planCols.map(c => `<th class="th-plan">${c.label}</th>`).join('')}
+      ${realCols.map(c => `<th class="th-real">${c.label}</th>`).join('')}
       <th class="th-real">Motivo</th><th class="th-real">Ação Corretiva</th><th class="th-real">Observação COA</th>
     </tr>`;
 
@@ -67,7 +68,7 @@ export function renderHerbtratosTable() {
   });
 
   if (!equips.length) {
-    tbody.innerHTML = `<tr><td colspan="${5 + (numCols * 2) + 3}" class="empty-row">Nenhum equipamento em ${S.hbEquipe}.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${5 + planCols.length + realCols.length + 3}" class="empty-row">Nenhum equipamento em ${S.hbEquipe}.</td></tr>`;
     return;
   }
 
@@ -133,8 +134,8 @@ export function renderHerbtratosTable() {
 
     return `<tr class="${ok ? 'row-meta-ok' : haReal > 0 ? 'row-meta-no' : ''}">
       <td class="mono">${cod}</td><td class="td-l">${op ? tc(op.Descricao) : ''}</td><td>${eq.Frota || ''}</td><td class="td-l">${tc(eq.Modelo || '')}</td><td>${getTurnoDisplay(cfg, sub)}</td>
-      ${config.map(c => `<td class="td-plan ${c.id === 'hah' ? '' : 'bold'}">${renderCell(c, true)}</td>`).join('')}
-      ${config.map(c => {
+      ${planCols.map(c => `<td class="td-plan ${['hah','htr','had'].includes(c.id) ? '' : 'bold'}">${renderCell(c, true)}</td>`).join('')}
+      ${realCols.map(c => {
         let cls = 'td-real';
         if (c.id === 'hah') cls += (ok ? ' val-ok' : haReal > 0 ? ' val-no' : '');
         let content = renderCell(c, false);
@@ -157,9 +158,11 @@ export function exportCSV() {
     { id: 'htr', label: 'Horas Trab.', type: 'system' },
     { id: 'had', label: 'Há/Dia', type: 'system' }
   ];
+  const planCols = config.filter(c => c.showPlan !== false);
+  const realCols = config.filter(c => c.showReal !== false);
   const hdrs = ['Cód. Operação', 'Operação', 'Frota', 'Modelo', 'Equipe', 'Turno'];
-  config.forEach(c => hdrs.push(`${c.label} (Plan)`));
-  config.forEach(c => hdrs.push(`${c.label} (Real)`));
+  planCols.forEach(c => hdrs.push(`${c.label} (Plan)`));
+  realCols.forEach(c => hdrs.push(`${c.label} (Real)`));
   hdrs.push('Motivo', 'Ação Corretiva', 'Observação');
   const equips = S.equipamentos.filter(e => norm(e.Equipe) === norm(S.hbEquipe));
   const rows = equips.map(eq => {
@@ -172,13 +175,13 @@ export function exportCSV() {
     const key = `${cod}|${eq.Modelo||''}|${eq.Frota}`;
     const real = S.realizados[key] || {};
     const data = [cod, op ? op.Descricao : '', eq.Frota, eq.Modelo, eq.Equipe || S.hbEquipe, getTurnoDisplay(cfg, sub)];
-    config.forEach(c => {
+    planCols.forEach(c => {
       if (c.id === 'hah' || c.id === 'rendimento') data.push(fmt2(rendimentoValue));
       else if (c.id === 'htr') data.push(fmt2(hp));
       else if (c.id === 'had') data.push(fmt2(hdp));
       else data.push(fmt2(rendimentoObj?.extrasPlan?.[c.id] || 0));
     });
-    config.forEach(c => {
+    realCols.forEach(c => {
       if (c.id === 'hah') {
         const hReal = parseFloat(real.horas) || 0;
         data.push(fmt2(hReal > 0 ? (real.haDia || 0) / hReal : 0));
