@@ -204,4 +204,4 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
-console.log('[AgroFlux] Boot OK · v' + (S.APP_VERSION || ''));
+console.log('[AgroFlux] Atualizado em 08/05 - v4.4.0 · OK');

@@ -62,7 +62,7 @@
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin-bottom:12px}
 .fg{display:flex;flex-direction:column}
 .fg label{font-size:.65rem;font-weight:700;margin-bottom:4px;color:var(--g800);letter-spacing:.05em;text-transform:uppercase}
-.fg select,.fg input[type=text],.fg input[type=number],.fg input[type=email],.fg input[type=password]{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;background:#fff;outline:none;transition:all var(--tr);color:var(--text)}
+.fg select,.fg input[type=text],.fg input[type=number],.fg input[type=email],.fg input[type=password]{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:0;font-size:.83rem;background:#fff;outline:none;transition:all var(--tr);color:var(--text)}
 .fg select:focus,.fg input:focus{border-color:var(--g700);box-shadow:0 0 0 3px rgba(46,125,50,.1)}
 .fg input[readonly]{background:#f0f4f0;color:#777}
 .fg textarea{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:.83rem;resize:vertical;min-height:62px;outline:none;transition:all var(--tr)}

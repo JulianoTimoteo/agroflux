@@ -100,8 +100,10 @@ export function onFrotaChange() {
   if (selectedFrota) {
     el('cCodOp').disabled = false;
     sv('cModelo', selectedFrota.Modelo || '');
+    // Garante comparação de string para evitar erro de tipo (número vs texto)
+    const permitidas = (selectedFrota.operacoesPermitidas || []).map(String);
     const allowedOps = S.operacoesAgricolas.filter(op =>
-      selectedFrota.operacoesPermitidas?.includes(op.CodOperacao) && norm(op.Equipe) === norm(S.campoEquipe)
+      permitidas.includes(String(op.CodOperacao)) && norm(op.Equipe) === norm(S.campoEquipe)
     );
     el('cCodOp').innerHTML = blank + allowedOps.map(op => `<option value="${op.CodOperacao}">${op.CodOperacao} - ${op.Descricao}</option>`).join('');
     sv('cOp', '');
@@ -496,7 +498,8 @@ export function initCampoMobile() {
       if (!e) return;
       e.addEventListener('change', () => {
         // Aguarda os onchange originais (HT.onFrotaChange etc.) terminarem
-        setTimeout(() => focusNext(id), 350);
+        // Aumentado para 450ms para garantir que o DOM mobile atualizou
+        setTimeout(() => focusNext(id), 450);
       });
     });
   }

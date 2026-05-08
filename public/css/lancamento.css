@@ -32,7 +32,7 @@
   /* ── Barra de progresso do formulário ─────────────────────── */
   #campoProgressWrap {
     position: sticky;
-    top: 58px; /* abaixo do user-bar */
+    top: 105px; /* Ajustado: o header mobile é mais alto que o desktop */
     z-index: 120;
     background: var(--bg);
     padding: 6px 0 4px;
@@ -381,10 +381,11 @@
 
   /* Cabeçalho do Card (Frota e Operação) */
   #tab-campo .tbl-wrap tr td[data-label="Frota"],
-  #tab-campo .tbl-wrap tr td[data-label="Operação"] {
+  #tab-campo .tbl-wrap tr td[data-label="Operação"],
+  #tab-campo .tbl-wrap tr td[data-label="Cód."] {
     grid-column: 1 / -1;
     background: #f8fafc;
-    padding: 14px 16px !important;
+    padding: 12px 16px !important;
   }
   #tab-campo .tbl-wrap tr td[data-label="Frota"] {
     font-size: 1.1rem !important;
@@ -398,6 +399,7 @@
     text-transform: uppercase;
     letter-spacing: 0.02em;
     border-bottom: 1px solid #f1f5f9 !important;
+    padding-top: 0 !important;
     margin-bottom: 8px;
   }
 
@@ -408,6 +410,13 @@
   #tab-campo .tbl-wrap tr td[data-label="Status"],
   #tab-campo .tbl-wrap tr td[data-label="Ação"] {
     grid-column: 1 / -1;
+  }
+
+  /* Garante que colunas dinâmicas (ex: Fardos) ocupem espaço visível */
+  #tab-campo .tbl-wrap tr td:not([grid-column]) {
+    grid-column: span 1;
+    background: #fff;
+    border-bottom: 1px solid #fafafa !important;
   }
 
   #tab-campo .tbl-wrap tr td[data-label="Selecionar"] {
