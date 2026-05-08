@@ -13,7 +13,7 @@ export const el  = id => document.getElementById(id);
 // ── Formatadores ──────────────────────────────────────────────
 export const tc = s => String(s || '').toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 export const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
-export const todayBR = () => new Date().toLocaleDateString('pt-BR');
+export const todayBR = () => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; };
 export const fmt2 = n => (parseFloat(n) || 0).toFixed(2);
 export const escHtml = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 export const getBdgClass = (t) => "bdg-" + norm(t).replace(/\s+/g, '-');

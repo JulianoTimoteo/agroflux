@@ -1,8 +1,7 @@
 // @ts-nocheck
 // sw.js - HerbTratos Service Worker
 
-const CACHE_NAME = 'herbtratos-v5';
-
+const CACHE_NAME = 'herbtratos-v6';
 const STATIC_ASSETS = [
   './',
   './index.html',

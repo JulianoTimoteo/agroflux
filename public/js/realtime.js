@@ -17,8 +17,8 @@ import { refreshAll } from './refresh.js';
 export function detachListeners() {
   if (S.listeners && S.listeners.length) {
     const activeListeners = [...S.listeners];
-    S.listeners = []; // Limpa a lista antes de executar para evitar reentrância
-    activeListeners.forEach(unsub => { 
+    S.listeners = [];
+    activeListeners.forEach(unsub => {
       if (typeof unsub === 'function') {
         try { unsub(); } catch(e) { /* Silencia erros de fechamento de conexão */ }
       }
@@ -64,10 +64,14 @@ export async function loadTodayRecords(customDate = null) {
   if (customDate) S.realizados = {};
 
   const allCols = ['herbicida', 'tratos', 'biomassa', 'preparo', 'linhaamarela', 'fertirrigacao'];
-  // AUTO-CORREÇÃO: Só assina coleções que o usuário tem permissão para ver (Abas)
   const userAbas = S.session?.Abas || [];
-  const allowedCols = (S.session?.Nivel === 'master' || S.session?.Nivel === 'admin') ? allCols :
-                      allCols.filter(c => userAbas.includes(c));
+  const nivel = S.session?.Nivel || '';
+
+  // CORREÇÃO: inclui 'administrador' e normaliza maiúsculas/minúsculas nas Abas
+  const isPrivileged = ['master', 'administrador', 'admin'].includes(nivel.toLowerCase());
+  const allowedCols = isPrivileged
+    ? allCols
+    : allCols.filter(c => userAbas.map(a => a.toLowerCase()).includes(c.toLowerCase()));
 
   for (const col of allowedCols) {
     try {
@@ -89,7 +93,8 @@ export async function loadTodayRecords(customDate = null) {
           };
         });
         S.realizados = { ...S.realizados, ...batchReal };
-        LS.set('realizados', S.realizados);
+        const uid = S.session?.uid;
+        if (uid) LS.set('realizados_' + uid, S.realizados);
         refreshAll();
       }, (err) => {
         if (err.code !== 'permission-denied') console.warn(`[FB] Erro nos registros: ${col}`, err);
@@ -191,8 +196,10 @@ export async function sincronizarCampo() {
       await _enviarRegistroUnico(r);
       S.pendentes = S.pendentes.filter(p => p.id !== r.id);
     }
-    LS.set('pendentes', S.pendentes);
-    await loadTodayRecords();
+    // CORREÇÃO: persiste os pendentes restantes no LS com chave por UID
+    const uid = S.session?.uid || 'anon';
+    LS.set('pendentes_' + uid, S.pendentes);
+
     toast('Sincronização concluída!', 's');
     playSuccessSound();
     refreshAll();
