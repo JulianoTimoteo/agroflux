@@ -16,8 +16,13 @@ import { refreshAll } from './refresh.js';
 // ── Detach listeners ativos antes de re-anexar ────────────────
 export function detachListeners() {
   if (S.listeners && S.listeners.length) {
-    S.listeners.forEach(unsub => { if (typeof unsub === 'function') unsub(); });
-    S.listeners = [];
+    const activeListeners = [...S.listeners];
+    S.listeners = []; // Limpa a lista antes de executar para evitar reentrância
+    activeListeners.forEach(unsub => { 
+      if (typeof unsub === 'function') {
+        try { unsub(); } catch(e) { /* Silencia erros de fechamento de conexão */ }
+      }
+    });
   }
 }
 
@@ -60,8 +65,9 @@ export async function loadTodayRecords(customDate = null) {
 
   const allCols = ['herbicida', 'tratos', 'biomassa', 'preparo', 'linhaamarela', 'fertirrigacao'];
   // AUTO-CORREÇÃO: Só assina coleções que o usuário tem permissão para ver (Abas)
-  const allowedCols = S.session?.Nivel === 'master' ? allCols :
-                      allCols.filter(c => S.session?.Abas?.includes(c));
+  const userAbas = S.session?.Abas || [];
+  const allowedCols = (S.session?.Nivel === 'master' || S.session?.Nivel === 'admin') ? allCols :
+                      allCols.filter(c => userAbas.includes(c));
 
   for (const col of allowedCols) {
     try {

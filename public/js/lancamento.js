@@ -69,6 +69,7 @@ export function populateCampoFrotas() {
 
 export function setCampoEquipe(team) {
   S.campoEquipe = team;
+  LS.set('campoEquipe', team); // Salva a equipe selecionada para o refresh
   S.pages.pend = 1;
   populateCampoFrotas();
   renderPendentes();

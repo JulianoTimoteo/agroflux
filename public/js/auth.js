@@ -144,6 +144,16 @@ async function loadUserProfile(firebaseUser) {
     S.realizados   = LS.get('realizados',   {});
     S.pendentes    = LS.get('pendentes',    []);
     S.usuarios     = LS.get('usuarios',     []);
+    S.campoEquipe  = LS.get('campoEquipe',  '');
+
+    // Garante que registros pendentes apareçam na tabela principal mesmo antes da sincronização
+    S.pendentes.forEach(p => {
+      const key = `${String(p.codOperacao).trim()}|${(p.modelo || '').trim()}|${String(p.frota).trim()}`;
+      if (!S.realizados[key]) {
+        S.realizados[key] = { horas: p.horasReal, haDia: p.haDia, motivo: p.motivo, acaoCorretiva: p.acao, obs: p.observacao, extras: p.extras };
+      }
+    });
+
     showApp();
     loadFromFirestore();
     updateSyncTimerUI();
@@ -186,22 +196,16 @@ export async function logout() {
     const ok = await customConfirm('Sair', 'Deseja encerrar sua sessão?');
     if (!ok) return;
 
-    // 1. Para os listeners imediatamente
-    detachListeners();
-    
-    // 2. Limpa o estado em memória para evitar que o Firestore tente re-sincronizar
+    // 1. Para os listeners locais antes de deslogar (ajuda a evitar erros 400)
+    detachListeners(); 
     S.session = null;
     S.realizados = {};
     
-    // 3. Desloga do Firebase
-    await signOut(auth);
+    // 2. Desloga do Firebase
+    await signOut(auth).catch(() => {});
 
-    // Limpeza seletiva: remove dados da sessão mas preserva credenciais (Lembrar Senha)
-    const savedUser = localStorage.getItem('ht_saved_user');
-    const savedPass = localStorage.getItem('ht_saved_pass');
-    localStorage.clear();
-    if (savedUser) localStorage.setItem('ht_saved_user', savedUser);
-    if (savedPass) localStorage.setItem('ht_saved_pass', savedPass);
+    // 3. Limpeza seletiva: NÃO use localStorage.clear() pois apaga pendentes e cache de frotas
+    LS.rm('realizados'); // Limpa cache de visualização, mas mantém 'pendentes' e 'campoEquipe'
 
     sessionStorage.clear();
     showLogin();
