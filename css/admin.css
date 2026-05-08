@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════════
+   admin.css — Aba "Admin" (frotas, operações, regras)
+   ═══════════════════════════════════════════════════════════════ */
+
+.admin-section{margin-bottom:20px;border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;background:#fff}
+.admin-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.admin-head h3{font-size:.88rem;font-weight:700;color:var(--g900);display:flex;align-items:center;gap:7px}
+.admin-rules{background:var(--b100);border-left:3px solid var(--b700);padding:9px 13px;border-radius:0 10px 10px 0;margin-top:10px;font-size:.72rem;color:#0d47a1;line-height:1.7}
+
+/* ── Lista customizada de operações (modal Frota) ─────────────── */
+.custom-op-list option {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  background-color: #fff;
+  color: #000;
+}
+/* 1. Já vinculado e selecionado -> VERDE (Manter) */
+.custom-op-list option.op-linked:checked {
+  background-color: #c8e6c9 !important;
+  color: #1b5e20 !important;
+  box-shadow: 0 0 10px 100px #c8e6c9 inset !important;
+  -webkit-text-fill-color: #1b5e20 !important;
+}
+/* 2. Já vinculado mas desmarcado -> VERMELHO (Remover) */
+.custom-op-list option.op-linked:not(:checked) {
+  background-color: #ffcdd2 !important;
+  color: #c62828 !important;
+}
+/* 3. Não vinculado e selecionado -> AZUL (Adicionar) */
+.custom-op-list option:checked:not(.op-linked) {
+  background-color: #bbdefb !important;
+  color: #0d47a1 !important;
+  box-shadow: 0 0 10px 100px #bbdefb inset !important;
+  -webkit-text-fill-color: #0d47a1 !important;
+}

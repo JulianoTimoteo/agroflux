@@ -1,0 +1,460 @@
+/* ═══════════════════════════════════════════════════════════════
+   lancamento.css — Aba "Campo" (formulário de lançamento)
+   ═══════════════════════════════════════════════════════════════ */
+
+.plan-box{background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border-radius:var(--r);padding:12px 18px;margin-bottom:14px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;box-shadow:0 4px 14px rgba(21,101,192,.3)}
+.pbi label{font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:2px}
+.pbi span{font-size:1.05rem;font-weight:800;font-family:'Courier New',monospace}
+.meta-tag{margin-left:auto}
+
+/* ── Floating Action Buttons (mobile) ─────────────────────────── */
+.campo-fab{position:fixed;bottom:20px;right:16px;z-index:400;flex-direction:column;gap:12px;display:none}
+@media(max-width:768px){.campo-fab{display:flex}}
+.fab{width:54px;height:54px;border-radius:12px;border:none;display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:var(--sh-lg);cursor:pointer;transition:transform var(--tr)}
+.fab:active{transform:scale(.91)}
+.fab-save{background:var(--g800);color:#fff}
+.fab-sync{background:var(--b800);color:#fff}
+
+/* ── Badges para meta atingida ────────────────────────────────── */
+.badge-meta{display:inline-flex;align-items:center;gap:5px;background:var(--g800);color:#fff;padding:5px 12px;border-radius:8px;font-size:.72rem;font-weight:700;box-shadow:0 2px 8px rgba(46,125,50,.35)}
+
+/* ── Grid de campos "Realizado" (4 colunas, alinhado) ─────────── */
+#cRealizedGrid .fg label { min-height: 48px; display: flex; align-items: flex-end; justify-content: center; text-align: center; line-height: 1.1; font-size: 0.65rem; margin-bottom: 6px; }
+#cRealizedGrid .fg input { padding: 7px 10px; font-size: 0.85rem; text-align: center; font-weight: 600; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE ESPECIAL — Aba Campo
+   Apenas para telas ≤ 768px: experiência de app nativo
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── Barra de progresso do formulário ─────────────────────── */
+  #campoProgressWrap {
+    position: sticky;
+    top: 105px; /* Ajustado: o header mobile é mais alto que o desktop */
+    z-index: 120;
+    background: var(--bg);
+    padding: 6px 0 4px;
+    margin-bottom: 8px;
+  }
+  #campoProgressTrack {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 -8px; /* sangra até as bordas do card */
+  }
+  #campoProgressBar {
+    height: 100%;
+    width: 0%;
+    border-radius: 2px;
+    background: var(--b800);
+    transition: width .4s ease, background .4s ease;
+  }
+
+  /* ── Card da aba Campo sem bordas no mobile ────────────────── */
+  #tab-campo > .card {
+    border-radius: 0;
+    padding: 10px 8px;
+    box-shadow: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  /* ── Tabs de equipe: scroll horizontal sem quebra ──────────── */
+  #cEquipeTabs {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    padding-bottom: 6px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #cEquipeTabs::-webkit-scrollbar { display: none; }
+  #cEquipeTabs .dtab {
+    flex-shrink: 0;
+    padding: 10px 18px !important;
+    font-size: .82rem !important;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  /* ── Grid: 1 coluna no mobile para o formulário ───────────── */
+  #tab-campo .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  /* ── Grid de "Realizado": 2 colunas no mobile ─────────────── */
+  #cRealizedGrid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px;
+  }
+  #cRealizedGrid .fg label {
+    min-height: 36px;
+    font-size: .6rem;
+  }
+  #cRealizedGrid .fg input {
+    padding: 12px 8px;
+    font-size: .92rem;
+  }
+
+  /* ── Inputs maiores (toque mais fácil) ────────────────────── */
+  #tab-campo .fg select,
+  #tab-campo .fg input[type=text],
+  #tab-campo .fg input[type=number],
+  #tab-campo .fg textarea {
+    padding: 13px 14px;
+    font-size: .95rem;
+    border-radius: 12px;
+    border-width: 2px;
+    min-height: 48px;
+  }
+
+  #tab-campo .fg label {
+    font-size: .7rem;
+    margin-bottom: 6px;
+    letter-spacing: .06em;
+  }
+
+  /* ── EFEITO ZOOM/ÊNFASE no campo ativo ────────────────────── */
+  #tab-campo .fg.campo-focused {
+    background: rgba(46, 125, 50, .05);
+    border-radius: 14px;
+    padding: 8px;
+    margin: -8px;
+    transition: background .25s ease, padding .25s ease;
+  }
+
+  #tab-campo .fg.campo-focused label {
+    color: var(--g700);
+    font-weight: 800;
+    transition: color .2s ease;
+  }
+
+  #tab-campo .fg.campo-focused select,
+  #tab-campo .fg.campo-focused input[type=text],
+  #tab-campo .fg.campo-focused input[type=number],
+  #tab-campo .fg.campo-focused textarea {
+    border-color: var(--g600) !important;
+    border-width: 2.5px !important;
+    box-shadow:
+      0 0 0 4px rgba(46, 125, 50, .15),
+      0 4px 16px rgba(46, 125, 50, .12) !important;
+    background: #f1f8e9 !important;
+    transition:
+      border-color .2s ease,
+      box-shadow .2s ease,
+      background .2s ease;
+  }
+
+  /* Barra lateral verde indicando campo ativo */
+  #tab-campo .fg.campo-focused::before {
+    content: '';
+    display: block;
+    position: absolute;
+    left: -1px;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    background: var(--g700);
+    border-radius: 2px;
+    opacity: .8;
+  }
+  #tab-campo .fg.campo-focused {
+    position: relative; /* necessário para ::before */
+  }
+
+  /* ── Plan box: vertical no mobile ─────────────────────────── */
+  .plan-box {
+    flex-direction: column;
+    gap: 0;
+    padding: 14px 16px;
+    border-radius: 14px;
+    margin-bottom: 16px;
+  }
+  .plan-box .pbi {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .18);
+  }
+  .plan-box .pbi:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .plan-box .pbi label {
+    font-size: .72rem;
+    margin-bottom: 0;
+    opacity: .85;
+  }
+  .plan-box .pbi span {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: .02em;
+  }
+
+  /* Meta tag no mobile: centralizada e full-width */
+  .meta-tag {
+    margin-left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, .18);
+    margin-top: 2px;
+  }
+  .meta-tag .badge-meta {
+    font-size: .82rem;
+    padding: 8px 20px;
+    border-radius: 30px;
+  }
+
+  /* ── Textareas maiores no mobile ──────────────────────────── */
+  #tab-campo #cMotivo,
+  #tab-campo #cAcao {
+    min-height: 80px;
+    font-size: .9rem;
+    resize: none;
+  }
+
+  /* ── Botões de ação: full width, empilhados ───────────────── */
+  #tab-campo .act-btns {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+    padding-bottom: 90px; /* espaço para o FAB não sobrepor */
+  }
+  #tab-campo .act-btns .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 15px 20px;
+    font-size: .9rem;
+    border-radius: 14px;
+    font-weight: 700;
+    letter-spacing: .03em;
+  }
+  /* Salvar fica visualmente destacado */
+  #tab-campo .act-btns .btn-primary {
+    box-shadow: 0 4px 16px rgba(46, 125, 50, .35);
+    font-size: .95rem;
+  }
+
+  /* ── FAB de salvar: maior e com sombra destacada ──────────── */
+  .fab-save {
+    width: 58px;
+    height: 58px;
+    font-size: 1.2rem;
+    box-shadow: 0 6px 20px rgba(46, 125, 50, .5);
+  }
+
+  /* ── Título da aba no mobile ──────────────────────────────── */
+  #tab-campo > .card > h3 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Info note mais compacta no mobile ────────────────────── */
+  #tab-campo .info-note {
+    font-size: .72rem;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+
+  /* ── Seção de pendentes: transposição para Cards no mobile ── */
+  #tab-campo .tbl-wrap {
+    margin-top: 15px;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  #tab-campo .tbl-wrap table, 
+  #tab-campo .tbl-wrap tbody, 
+  #tab-campo .tbl-wrap tr, 
+  #tab-campo .tbl-wrap td { 
+    display: block; 
+    width: 100%;
+  }
+
+  /* Cabeçalho simplificado no mobile: apenas botões globais */
+  #tab-campo .tbl-wrap thead tr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    padding: 5px 4px;
+    border-radius: 0;
+    border: none;
+    margin-bottom: 12px;
+    box-shadow: none;
+  }
+  #tab-campo .tbl-wrap thead th { display: none; }
+  #tab-campo .tbl-wrap thead th:first-child,
+  #tab-campo .tbl-wrap thead th:last-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    padding: 0;
+    color: var(--g800);
+    font-weight: 700;
+    font-size: 0.8rem;
+    width: auto !important;
+    flex: 0 0 auto;
+    background: transparent !important;
+    position: static !important;
+  }
+  
+  /* Design Moderno para o Checkbox de Seleção */
+  #tab-campo .tbl-wrap thead th:first-child {
+    background: transparent;
+    border: none;
+    justify-content: flex-start;
+  }
+  #tab-campo .tbl-wrap thead th:first-child:after { 
+    content: 'Selecionar tudo'; 
+    font-size: 0.78rem;
+    white-space: nowrap;
+    margin-left: 10px;
+    color: var(--muted);
+    letter-spacing: -0.01em;
+  }
+  #tab-campo .tbl-wrap thead th:first-child input { 
+    width: 20px; height: 20px; margin: 0; 
+    accent-color: var(--g700);
+    cursor: pointer;
+  }
+
+  #tab-campo .tbl-wrap thead th:last-child { 
+    font-size: 0; 
+    justify-content: flex-end;
+    background: transparent !important;
+  } /* Esconde texto "Ação" */
+  #tab-campo .tbl-wrap thead th:last-child button { 
+    font-size: 0.72rem; 
+    padding: 9px 15px; 
+    border-radius: 12px; 
+    display: flex; 
+    align-items: center; gap: 6px;
+    background: linear-gradient(135deg, var(--g700), var(--g800));
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.25);
+    transition: all 0.2s ease;
+  }
+  #tab-campo .tbl-wrap thead th:last-child button:active { transform: scale(0.95); opacity: 0.9; }
+  #tab-campo .tbl-wrap thead th:last-child button::after { content: 'Sincronizar'; font-weight: 700; }
+
+  #tab-campo .tbl-wrap tr {
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    margin-bottom: 20px;
+    background: #fff;
+    padding: 0;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.04);
+    position: relative;
+    overflow: hidden;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr; /* Permite colocar dados lado a lado */
+  }
+  
+  #tab-campo .tbl-wrap td {
+    text-align: left !important;
+    padding: 12px 16px !important;
+    border: none !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 44px;
+    font-size: 0.9rem !important;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* Cabeçalho do Card (Frota e Operação) */
+  #tab-campo .tbl-wrap tr td[data-label="Frota"],
+  #tab-campo .tbl-wrap tr td[data-label="Operação"],
+  #tab-campo .tbl-wrap tr td[data-label="Cód."] {
+    grid-column: 1 / -1;
+    background: #f8fafc;
+    padding: 12px 16px !important;
+  }
+  #tab-campo .tbl-wrap tr td[data-label="Frota"] {
+    font-size: 1.1rem !important;
+    color: var(--g800);
+    font-weight: 800;
+    padding-bottom: 0 !important;
+  }
+  #tab-campo .tbl-wrap tr td[data-label="Operação"] {
+    font-size: 0.8rem !important;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding-top: 0 !important;
+    margin-bottom: 8px;
+  }
+
+  /* Ocupação total para campos de texto/status/ação */
+  #tab-campo .tbl-wrap tr td[data-label="Selecionar"],
+  #tab-campo .tbl-wrap tr td[data-label="Modelo"],
+  #tab-campo .tbl-wrap tr td[data-label="Data"],
+  #tab-campo .tbl-wrap tr td[data-label="Status"],
+  #tab-campo .tbl-wrap tr td[data-label="Ação"] {
+    grid-column: 1 / -1;
+  }
+
+  /* Garante que colunas dinâmicas (ex: Fardos) ocupem espaço visível */
+  #tab-campo .tbl-wrap tr td:not([grid-column]) {
+    grid-column: span 1;
+    background: #fff;
+    border-bottom: 1px solid #fafafa !important;
+  }
+
+  #tab-campo .tbl-wrap tr td[data-label="Selecionar"] {
+    position: absolute; top: 12px; right: 12px;
+    background: transparent !important; border: none !important;
+    width: auto !important; height: auto !important; z-index: 2;
+  }
+  #tab-campo .tbl-wrap tr td[data-label="Selecionar"]:before { display: none; }
+
+  #tab-campo .tbl-wrap td::before {
+    content: attr(data-label);
+    display: block;
+    font-weight: 700;
+    color: var(--muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  #tab-campo .tbl-wrap td:last-child { 
+    flex-direction: row; 
+    justify-content: flex-end; 
+    gap: 12px; 
+    background: #fdfdfd; 
+    border-top: 1px solid #f1f5f9 !important;
+  }
+  #tab-campo .tbl-wrap td.empty-row { grid-column: 1/-1; text-align: center !important; align-items: center; padding: 60px 20px !important; }
+  #tab-campo .tbl-wrap td.empty-row:before { display: none; }
+}
+
+/* Telas muito pequenas (≤ 380px) */
+@media (max-width: 380px) {
+  #cRealizedGrid {
+    grid-template-columns: 1fr !important;
+  }
+  #tab-campo .fg select,
+  #tab-campo .fg input,
+  #tab-campo .fg textarea {
+    font-size: .88rem;
+  }
+}
