@@ -198,12 +198,17 @@ export function limparCampo() {
   el('planBox').style.display = 'none'; el('metaTag').innerHTML = ''; el('cSubDiv').style.display = 'none';
   document.querySelectorAll('.campo-erro').forEach(e => e.classList.remove('campo-erro'));
   ['cntMot','cntAcao'].forEach(id => txt(id, '0/300'));
+  
+  // Limpa o rascunho ao limpar o formulário manualmente
   clearCampoDraft();
+  
   S.metaPlan = 0; populateCampoFrotas();
 }
 
 // ── Gerenciamento de Rascunho (Draft) ─────────────────────────
 export function saveCampoDraft() {
+  // Impede salvar rascunho se não houver usuário (ex: tela de login)
+  if (!auth.currentUser) return;
   const uid = auth.currentUser?.uid;
   if (!uid) return;
   const draft = {
@@ -222,14 +227,24 @@ export function restoreCampoDraft() {
   const d = LS.get('draft_campo_' + uid);
   if (!d) return;
   if (d.data) sv('cData', d.data);
-  if (d.frota) { sv('cFrota', d.frota); onFrotaChange(); }
-  if (d.cod) { sv('cCodOp', d.cod); onCodChange(); }
+  
+  // Ordem crítica: Frota define Operações. Preenchemos em cascata.
+  if (d.frota) { 
+    sv('cFrota', d.frota); 
+    onFrotaChange(); 
+    if (d.cod) { 
+      sv('cCodOp', d.cod); 
+      onCodChange(); 
+    }
+  }
+  
   if (d.turno) { sv('cTurno', d.turno); onTurnoChange(); }
   if (d.sub) sv('cSub', d.sub);
   if (d.horas) sv('cHoras', d.horas);
   if (d.haDia) sv('cHaDia', d.haDia);
   if (d.motivo) sv('cMotivo', d.motivo);
   if (d.acao) sv('cAcao', d.acao);
+  
   setTimeout(() => {
     document.querySelectorAll('.c-extra-in').forEach(i => { if (d.extras?.[i.dataset.id]) i.value = d.extras[i.dataset.id]; });
     _verificarMeta();
@@ -327,6 +342,8 @@ export async function salvarCampo() {
     LS.set('realizados_' + auth.currentUser.uid, S.realizados);
     LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   }
+  
+  // Limpa o rascunho após salvar com sucesso na lista de pendentes
   clearCampoDraft();
   limparCampo(); refreshAll(); playSuccessSound();
 }
@@ -558,8 +575,8 @@ export function initCampoMobile() {
   });
 
   // ── Auto-avanço após selecionar dropdown (só em touch) ──────
-  // Avança para o próximo campo automaticamente após escolher
-  // uma opção no select nativo do celular.
+  // Além de avançar, garante que o rascunho seja salvo ao mudar selects
+  // em dispositivos touch onde o evento de 'input' pode ser inconsistente.
   if ('ontouchstart' in window) {
     const mobileSelects = ['cData', 'cFrota', 'cCodOp', 'cTurno', 'cSub'];
     mobileSelects.forEach(id => {

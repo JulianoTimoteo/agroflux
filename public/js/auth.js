@@ -148,8 +148,6 @@ async function loadUserProfile(firebaseUser) {
     S.campoEquipe  = LS.get('campoEquipe_' + uid,  '');
     if (!S.campoEquipe && profile.Equipes?.length) S.campoEquipe = profile.Equipes[0];
 
-    restoreCampoDraft();
-
     // Garante que pendentes apareçam na tabela antes da sincronização
     S.pendentes.forEach(p => {
       const key = `${String(p.codOperacao).trim()}|${(p.modelo || '').trim()}|${String(p.frota).trim()}`;
@@ -159,6 +157,7 @@ async function loadUserProfile(firebaseUser) {
     });
 
     showApp();
+    restoreCampoDraft(); // Restaura o rascunho APÓS o app estar visível e populado
     loadFromFirestore();
     updateSyncTimerUI();
   } catch (e) {
