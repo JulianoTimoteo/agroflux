@@ -7,7 +7,7 @@ O **AgroFlux** é uma solução progressiva (PWA) de alta performance para apont
 ## 🚀 Funcionalidades Principais
 
 ### 🚜 Apontamento de Campo (Aba Campo)
-- **Offline-First:** Lançamentos são salvos localmente (Pendentes) e sincronizados automaticamente quando há conexão.
+- **Offline-First:** Leitura de dados via cache local quando offline; escrita exige conexão.
 - **Sistema de Rascunho (Draft):** Salva automaticamente o progresso do preenchimento para evitar perda de dados por fechamento acidental ou deslogue.
 - **Experiência Mobile Nativa:**
   - Barra de progresso visual do formulário.
@@ -17,7 +17,7 @@ O **AgroFlux** é uma solução progressiva (PWA) de alta performance para apont
 - **Validação de Meta:** Indicador visual instantâneo (Atingido/Não Atingido) baseado no rendimento planejado vs. realizado.
 
 ### 📊 Inteligência e Resultados
-- **Dashboard Real-time:** KPIs dinâmicos e gráficos (Chart.js) com interface *Glassmorphism*.
+- **Dashboard Real-time:** KPIs dinâmicos e gráficos (Chart.js) com interface *Glassmorphism* — atualizados automaticamente via Firestore.
 - **Tabela Consolidada (HerbTratos):** Comparativo direto entre Planejado vs. Realizado por equipe.
 - **Exportação de Dados:** Suporte para exportação em CSV (Excel) e geração de relatórios em imagem (PNG) da performance da equipe.
 
@@ -28,7 +28,56 @@ O **AgroFlux** é uma solução progressiva (PWA) de alta performance para apont
 
 ---
 
-## Estrutura de Pastas
+## 🏗️ Arquitetura (OS CAMPO)
+
+### 🔥 Firestore = Única Fonte de Verdade
+
+Diferente de versões anteriores que utilizavam localStorage como fonte de verdade com merges complexos, o AgroFlux v4.5 adota uma arquitetura simplificada inspirada no sistema **OS CAMPO**:
+
+| Aspecto | Implementação |
+|---------|---------------|
+| **Fonte de verdade** | Firestore APENAS |
+| **Sincronização** | Automática via `onSnapshot` |
+| **Cross-device** | Imediato (tempo real) |
+| **Offline** | Leitura via cache; escrita exige conexão |
+| **Pendentes** | Apenas cache visual (não é fila) |
+
+### 📡 Sincronização em Tempo Real
+
+Todos os dados são sincronizados automaticamente via listeners do Firestore:
+
+- `admin_config/*` → equipamentos, rendimentos, plano de horas, operações agrícolas
+- Coleções por equipe (`tratos`, `herbicida`, `preparo`, etc.) → registros do dia
+- `usuarios` → lista de usuários (para níveis privilegiados)
+
+**Não existe mais botão "Sincronizar"** — as atualizações são instantâneas entre todos os dispositivos.
+
+### 💾 LocalStorage (Apenas Cache)
+
+O localStorage é utilizado EXCLUSIVAMENTE para:
+- Cache de leitura offline (última versão conhecida)
+- Rascunho do formulário (draft)
+- Preferências do usuário (equipe selecionada, aba ativa)
+
+**Não há mais lógica de merge** entre cache e servidor. O Firestore sempre prevalece.
+
+### 🪟 `window.HT` — Namespace Global
+
+O HTML continua usando `onclick="window.HT && HT.foo()"` para **fidelidade total** com o monolito original. O `app.js` popula esse namespace em runtime importando todas as funções dos módulos.
+
+### 🔄 `refresh.js` — Coordenador Anti-ciclo
+
+Centraliza `refreshAll()` com debounce para evitar múltiplos refreshes consecutivos. Os módulos só importam `refreshAll` desse arquivo, nunca uns dos outros.
+
+### 🔐 Auth Dupla (Admin sem Deslogar)
+
+`firebase-init.js` instancia **duas** apps:
+- `app` / `auth` — sessão do admin logado
+- `appB` / `authB` — instância secundária usada por `usuarios.js` para criação de contas sem deslogar o admin atual.
+
+---
+
+## 📁 Estrutura de Pastas
 
 ```text
 agroflux-main/
@@ -57,26 +106,20 @@ agroflux-main/
     └── js/
         ├── firebase-init.js   ← initializeApp + reexports do SDK
         ├── state.js           ← S, LS, defaults (equipamentos, rendimentos…)
-        ├── utils.js           ← gv/sv/el/toast/openModal/loading/...
-        ├── realtime.js        ← Firestore listeners + sync
-        ├── refresh.js         ← refreshAll() (anti-ciclo)
+        ├── utils.js           ← helpers (gv/sv/el/toast/openModal/loading/...)
+        ├── realtime.js        ← Firestore listeners + escrita direta
+        ├── refresh.js         ← refreshAll() com debounce
         ├── navigation.js      ← renderTabs, activateTab, mobileNav
         ├── auth.js            ← login, setup, logout, perfil
-        ├── lancamento.js      ← aba Campo + pendentes
+        ├── lancamento.js      ← aba Campo (formulário + salvamento direto)
         ├── registros.js       ← tabela HerbTratos + exports
         ├── dashboard.js       ← KPIs + charts
         ├── admin.js           ← Frotas, Rendimentos, Operações
         ├── config-colunas.js  ← Configuração dinâmica de metas extras
         ├── usuarios.js        ← gerenciamento de contas (master)
-        ├── config-colunas.js  ← modal "Configurar Colunas"
         └── app.js             ← entry point (window.HT + boot)
-```
 
----
 
-## Estrutura do Firestore
-
-```text
 fertratos (projeto)
 │
 ├── admin_config/
@@ -85,97 +128,13 @@ fertratos (projeto)
 │   ├── planoHoras          → { items: [...] }
 │   ├── operacoesAgricolas  → { items: [...] }
 │   └── team_configs        → { config: { equipe: [colunas]... } }
-... (coleções por equipe e usuários)
-```
-
----
-
-## 🛠 Tecnologias Utilizadas
-
-- **Frontend:** HTML5, CSS3 (Variáveis nativas, Grid, Flexbox), JavaScript Moderno (ES6+ Modules).
-- **PWA:** Service Workers, Web App Manifest.
-- **Backend:** Firebase Authentication (Login por E-mail ou Apelido), Cloud Firestore (Banco NoSQL em tempo real).
-- **Gráficos:** Chart.js.
-- **Utilidades:** html2canvas (Exportação de imagem), FontAwesome (Ícones).
-
----
----
-
-## Primeiro Acesso
-
-1. Abra a URL do app
-2. Clique em **"Criar conta"** na tela de login (rota de setup)
-3. Preencha Nome, E-mail e Senha (mín. 6 caracteres)
-4. O primeiro usuário criado recebe nível **Master** automaticamente
-5. Os dados padrão (frotas, rendimentos, plano horas, operações agrícolas) são criados no Firestore automaticamente
-
----
-
-## Níveis de Acesso
-
-| Nível           | Acesso                                       |
-|:----------------|:---------------------------------------------|
-| `operador`      | Campo + HerbTratos + Dashboard               |
-| `administrador` | Campo + HerbTratos + Dash + Admin (Frotas/Rend) |
-| `master`        | Tudo + aba Usuários                          |
-
----
-
-## Arquitetura
-
-### `window.HT` — namespace global
-
-O HTML continua usando `onclick="window.HT && HT.foo()"` para **fidelidade total** com o monolito original. O `app.js` popula esse namespace em runtime importando todas as funções dos módulos. Isso permite que a refatoração seja puramente estrutural — zero alterações no HTML/onclicks existentes.
-
-### `refresh.js` — coordenador anti-ciclo
-
-Para evitar dependências circulares entre módulos de aba (ex: `lancamento.js` quer chamar `renderHerbtratosTable` de `registros.js`, que por sua vez chama `populateCampoFrotas`...), todo refresh global passa pelo `refresh.js`. Os módulos só importam `refreshAll` desse arquivo, nunca uns dos outros.
-
-### Offline-first
-
-`state.js` centraliza o `LS` (helper de localStorage com prefixo `ht_`). Toda leitura tenta cache local primeiro; o Firestore valida e atualiza em background via `realtime.js`. Quando offline, os lançamentos vão para `S.pendentes` (também em LS) e são reenviados na próxima sincronização.
-
-### Auth dupla (admin sem deslogar)
-
-`firebase-init.js` instancia **duas** apps:
-- `app` / `auth` — sessão do admin logado
-- `appB` / `authB` — instância secundária usada por `usuarios.js` para `createUserWithEmailAndPassword` sem deslogar o admin atual.
-
----
-
-## Notas de Migração (do GAS legacy)
-
-- ❌ Google Apps Script → removido
-- ❌ Google Sheets → removido
-- ✅ Autenticação → Firebase Auth (e-mail + senha)
-- ✅ Dados admin → Firestore `admin_config/*`
-- ✅ Registros campo → Firestore por equipe
-- ✅ Usuários → Firebase Auth + Firestore `usuarios/{uid}`
-- ✅ Offline-first → localStorage como cache, Firestore como fonte de verdade
-- ✅ Sincronização agendada na hora cheia
-
----
-
-## Firebase Config
-
-As chaves do Firebase Web SDK são **públicas por design** — segurança real é garantida pelas regras em `firestore.rules`.
-
-```js
-const FIREBASE_CFG = {
-  apiKey:            "AIzaSyCI5oMXp9v5Y0gPBoZe4wBE7jR_QjDWku4",
-  authDomain:        "fertratos.firebaseapp.com",
-  projectId:         "fertratos",
-  storageBucket:     "fertratos.firebasestorage.app",
-  messagingSenderId: "372073605916",
-  appId:             "1:372073605916:web:3078f1591caab253d4a8d9",
-  measurementId:     "G-42NM186MEP"
-};
-```
-
-Editar em `public/js/firebase-init.js` se quiser apontar para outro projeto.
-
----
-
-## Versão
-
-`APP_VERSION = "4.3.1"` (definida em `state.js`)
+│
+├── tratos/                 → registros da equipe Tratos
+├── herbicida/              → registros da equipe Herbicida
+├── preparo/                → registros da equipe Preparo
+├── biomassa/               → registros da equipe Biomassa
+├── linhaamarela/           → registros da equipe Linha Amarela
+├── fertirrigacao/          → registros da equipe Fertirrigação
+│
+└── usuarios/               → { uid: { Nome, Email, Nivel, Abas, Equipes, ... } }
+        
