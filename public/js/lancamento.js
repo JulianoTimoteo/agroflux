@@ -409,7 +409,7 @@ export function renderPendentes() {
   txt('pendCnt', filtered.length);
   const btn = el('syncBtnHeader');
   if (btn) {
-    btn.disabled = filtered.length === 0;
+    btn.style.display = filtered.length === 0 ? 'none' : 'inline-block';
     btn.classList.toggle('btn-pulse', filtered.length > 0);
   }
 

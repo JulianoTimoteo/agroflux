@@ -217,4 +217,4 @@ if ('serviceWorker' in navigator) {
   }).catch(err => console.warn('[SW] Falha ao registrar:', err));
 }
 
-console.log('[AgroFlux] v4.7.0 · Única Verdade: Firebase Temp · Layout: CSS Corrigido');
+console.log('[AgroFlux] v4.8.0 · Única Verdade: Firebase Temp · Sincronismo Cross-Device Ativo');
