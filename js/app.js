@@ -1,17 +1,19 @@
 // ═══════════════════════════════════════════════════════════════
-// app.js — Entry point (boot do PWA HerbTratos)
+// app.js — Entry point (boot do PWA AgroFlux)
 // ═══════════════════════════════════════════════════════════════
-// Responsável por:
-//   1. Importar todos os módulos.
-//   2. Expor `window.HT` com TODAS as funções referenciadas via
-//      onclick="window.HT && HT.foo()" no HTML — fidelidade 1:1
-//      com o monolito original.
-//   3. Inicializar listeners globais (PWA, online/offline, modais,
-//      observador de auth e formulários).
-//   4. Registrar o Service Worker.
+//
+// ARQUITETURA SIMPLIFICADA (estilo OS CAMPO):
+//
+//   1. Importa todos os módulos
+//   2. Expõe window.HT com TODAS as funções (onclicks do HTML)
+//   3. Inicializa listeners globais (PWA, online/offline, modais, auth)
+//   4. Registra Service Worker
+//
+//   IMPORTANTE: NÃO há mais botão "Sincronizar" — os dados são
+//   atualizados em tempo real via onSnapshot (realtime.js)
 // ═══════════════════════════════════════════════════════════════
 
-// ── Tipos de dado / estado ────────────────────────────────────
+// ── Estado global ─────────────────────────────────────────────
 import { S } from './state.js';
 
 // ── Utils (UI helpers, formatadores, modais) ──────────────────
@@ -22,7 +24,8 @@ import {
 
 // ── Realtime (Firestore + sync) ───────────────────────────────
 import {
-  startHourlySync, syncNow, detachListeners, updateObs
+  startHourlySync, syncNow, detachListeners, updateObs,
+  saveCampoRecord, updateCampoRecord, deleteCampoRecord
 } from './realtime.js';
 
 // ── Navegação ─────────────────────────────────────────────────
@@ -36,9 +39,6 @@ import {
   onTurnoChange, onHorasIn, onHaDiaIn, _verificarMeta, limparCampo,
   salvarCampo, renderPendentes, toggleSelPend, editarPend, pagPend, delPend
 } from './lancamento.js';
-
-// ── Realtime: sincronizarCampo (precisa estar exposto) ────────
-import { sincronizarCampo } from './realtime.js';
 
 // ── Aba "Equipe" / Registros ──────────────────────────────────
 import {
@@ -80,63 +80,142 @@ import {
 } from './auth.js';
 
 // ── Refresh global ────────────────────────────────────────────
-import { refreshAll } from './refresh.js';
+import { refreshAll, refreshCurrentTab } from './refresh.js';
 
 // ═══════════════════════════════════════════════════════════════
 //  window.HT — namespace global usado por TODOS os onclicks
 // ═══════════════════════════════════════════════════════════════
-// Mantido idêntico ao monolito original (linhas 2441–2462) para
-// preservar a integração com o HTML existente sem quaisquer
-// alterações estruturais.
+// Mantido compatível com o HTML existente para não quebrar
+// nenhum onclick="window.HT && HT.foo()"
 // ═══════════════════════════════════════════════════════════════
 window.HT = {
+  // ═════════════════════════════════════════════════════════════
   // Aba Campo — formulário e pendentes
-  onCodChange, onFrotaChange, onTurnoChange, onHorasIn, onHaDiaIn,
-  setCampoEquipe, limparCampo, salvarCampo, sincronizarCampo,
-  delPend, pagPend, populateCampoFrotas, editarPend, toggleSelPend,
+  // ═════════════════════════════════════════════════════════════
+  onCodChange, 
+  onFrotaChange, 
+  onTurnoChange, 
+  onHorasIn, 
+  onHaDiaIn,
+  setCampoEquipe, 
+  limparCampo, 
+  salvarCampo, 
+  delPend, 
+  pagPend, 
+  populateCampoFrotas, 
+  editarPend, 
+  toggleSelPend,
 
   // Operações agrícolas (form de Campo)
-  onOpsSrchChange, _verificarMeta, updateObs,
+  onOpsSrchChange, 
+  _verificarMeta, 
+  updateObs,
 
-  // Aba Admin — Frotas
-  abrirFrota, salvarFrota, delFrota, renderFrotas, pagFrota,
-  onFrotaSrchChange, onFrotaTeamChange, onFrotaEquipeChange,
-  onFrotaOpSrch, onFrotaOpChange, onOpEquipeChange,
+  // ═════════════════════════════════════════════════════════════
+  // Aba Admin — Frotas, Rendimentos, Operações
+  // ═════════════════════════════════════════════════════════════
+  abrirFrota, 
+  salvarFrota, 
+  delFrota, 
+  renderFrotas, 
+  pagFrota,
+  onFrotaSrchChange, 
+  onFrotaTeamChange, 
+  onFrotaEquipeChange,
+  onFrotaOpSrch, 
+  onFrotaOpChange, 
+  onOpEquipeChange,
+  
+  // Rendimentos
+  renderRend,
+  abrirRend,
+  salvarRend,
+  delRend,
+  onRendTurnoChange,
+  
+  // Operações Agrícolas (Admin)
+  renderOps, 
+  abrirOpAgric, 
+  salvarOpAgric, 
+  delOpAgric,
+  onOpTurnoChange,
+  populateOpEquipeSelect,
 
-  // Navegação / sync
-  toggleMobileNav, syncNow,
-
-  // Modal de configuração de colunas
-  abrirTeamConfig, renderTeamConfigCols, onOpTurnoChange,
-  addTeamCol, removeTeamCol, moveCol, updateColLabel, updateColSetting, limparTeamConfig,
-
-  // Tabs e listeners
-  activateTab, detachListeners,
-
-  // Operações agrícolas (Admin)
-  renderOps, abrirOpAgric, salvarOpAgric, delOpAgric,
-
-  // Tabs (rendering)
+  // ═════════════════════════════════════════════════════════════
+  // Navegação / Sync
+  // ═════════════════════════════════════════════════════════════
+  toggleMobileNav, 
+  syncNow,
+  activateTab, 
+  detachListeners,
   renderTabs,
 
+  // ═════════════════════════════════════════════════════════════
+  // Modal de configuração de colunas
+  // ═════════════════════════════════════════════════════════════
+  abrirTeamConfig, 
+  renderTeamConfigCols,
+  addTeamCol, 
+  removeTeamCol, 
+  moveCol, 
+  updateColLabel, 
+  updateColSetting, 
+  limparTeamConfig,
+
+  // ═════════════════════════════════════════════════════════════
   // Dashboard
-  changeDashDate, exportDash,
+  // ═════════════════════════════════════════════════════════════
+  changeDashDate, 
+  exportDash,
 
+  // ═════════════════════════════════════════════════════════════
   // Usuários
-  abrirUsuario, salvarUsuario, desativarUsuario, ativarUsuario,
-  renderUsuarios, pagUs, selTeams, selAbas, selAllUser: selAbas,
+  // ═════════════════════════════════════════════════════════════
+  abrirUsuario, 
+  salvarUsuario, 
+  desativarUsuario, 
+  ativarUsuario,
+  renderUsuarios, 
+  pagUs, 
+  selTeams, 
+  selAbas, 
+  selAllUser: selAbas,
 
+  // ═════════════════════════════════════════════════════════════
   // Modais / confirmação
-  closeConfirm, openModal, fecharModal,
+  // ═════════════════════════════════════════════════════════════
+  closeConfirm, 
+  openModal, 
+  fecharModal,
 
+  // ═════════════════════════════════════════════════════════════
   // Auth / conta
-  logout, abrirGerenciar, salvarGerenciar, esqueciSenha, showSetup,
+  // ═════════════════════════════════════════════════════════════
+  logout, 
+  abrirGerenciar, 
+  salvarGerenciar, 
+  esqueciSenha, 
+  showSetup,
 
+  // ═════════════════════════════════════════════════════════════
   // Exports da tabela consolidada
-  exportCSV, exportTeamImage,
+  // ═════════════════════════════════════════════════════════════
+  exportCSV, 
+  exportTeamImage,
 
+  // ═════════════════════════════════════════════════════════════
   // Toggle de senha (olho)
-  togglePwd
+  // ═════════════════════════════════════════════════════════════
+  togglePwd,
+  
+  // ═════════════════════════════════════════════════════════════
+  // NOVAS FUNÇÕES (para compatibilidade com OS CAMPO)
+  // ═════════════════════════════════════════════════════════════
+  refreshAll,
+  refreshCurrentTab,
+  saveCampoRecord,
+  updateCampoRecord,
+  deleteCampoRecord
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -146,18 +225,19 @@ window.HT = {
 // ── Click fora do conteúdo do modal fecha o modal ─────────────
 document.addEventListener('click', e => {
   if (e.target.classList && e.target.classList.contains('modal')) {
-    if (e.target.id === 'mConfirm') { closeConfirm(false); return; }
+    if (e.target.id === 'mConfirm') { 
+      closeConfirm(false); 
+      return; 
+    }
     e.target.classList.remove('open');
   }
 
   // Fechar menu mobile ao clicar fora
   const nav = document.getElementById('tabsNav');
   if (nav && nav.classList.contains('mobile-open')) {
-    // Usamos o caminho completo do clique para detectar o botão ou o menu.
-    // Isso evita que o menu feche sozinho quando o ícone interno do botão é trocado/removido.
     const path = e.composedPath ? e.composedPath() : [];
-    const clicouNoBotao = path.some(el => el.id === 'mobileNavBtn');
-    const clicouNoMenu  = path.some(el => el.id === 'tabsNav');
+    const clicouNoBotao = path.some(el => el?.id === 'mobileNavBtn');
+    const clicouNoMenu = path.some(el => el?.id === 'tabsNav');
 
     if (!clicouNoBotao && !clicouNoMenu) {
       toggleMobileNav();
@@ -167,6 +247,7 @@ document.addEventListener('click', e => {
 
 // ── PWA install prompt ────────────────────────────────────────
 let _deferredPrompt = null;
+
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   _deferredPrompt = e;
@@ -177,31 +258,86 @@ window.addEventListener('beforeinstallprompt', e => {
 document.addEventListener('click', async e => {
   const btn = e.target.closest && e.target.closest('#pwaBtn');
   if (!btn) return;
+  
   if (!_deferredPrompt) {
     toast('Use o menu do navegador para instalar.', 'w');
     return;
   }
+  
   _deferredPrompt.prompt();
-  try { await _deferredPrompt.userChoice; } catch (_) {}
+  try { 
+    await _deferredPrompt.userChoice; 
+  } catch (_) {}
   _deferredPrompt = null;
   btn.style.display = 'none';
 });
 
 // ── Online / Offline ──────────────────────────────────────────
-window.addEventListener('online',  () => syncUI('ok',   'Online'));
-window.addEventListener('offline', () => syncUI('',     'Offline'));
-if (!navigator.onLine) syncUI('', 'Offline');
+window.addEventListener('online', () => {
+  syncUI('ok', 'Online');
+  // Tenta recarregar dados quando voltar online
+  if (S.session) {
+    import('./realtime.js').then(({ loadFromFirestore }) => {
+      loadFromFirestore();
+      toast('Conectado! Dados atualizados.', 's');
+    });
+  }
+});
 
-// ── Sync agendado ─────────────────────────────────────────────
+window.addEventListener('offline', () => {
+  syncUI('', 'Offline — usando dados locais');
+  toast('Sem conexão com a internet. Os dados são apenas locais.', 'w');
+});
+
+// Status inicial
+if (!navigator.onLine) {
+  syncUI('', 'Offline — usando dados locais');
+}
+
+// ── Sync agendado (a cada hora) ───────────────────────────────
 startHourlySync();
 
 // ── Inicializa formulários e observador de auth ───────────────
 initAuthForms();
 initAuthObserver();
 
-// ── Service Worker ────────────────────────────────────────────
+// ── Service Worker (PWA) ──────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log('[SW] Service Worker registrado'))
+    .catch(err => console.warn('[SW] Erro ao registrar:', err));
 }
 
-console.log('[AgroFlux] Publicado Git - v4.5.0 · OK');
+// ── Previne fechamento acidental com rascunho não salvo ───────
+let _hasUnsavedDraft = false;
+
+function checkUnsavedDraft() {
+  const uid = S.session?.uid;
+  if (!uid) return false;
+  const draft = localStorage.getItem(`ht_draft_campo_${uid}`);
+  if (draft) {
+    try {
+      const draftData = JSON.parse(draft);
+      const hasData = draftData.frota || draftData.cod || draftData.horas;
+      if (hasData) {
+        _hasUnsavedDraft = true;
+        return true;
+      }
+    } catch(e) {}
+  }
+  _hasUnsavedDraft = false;
+  return false;
+}
+
+window.addEventListener('beforeunload', (e) => {
+  if (checkUnsavedDraft()) {
+    e.preventDefault();
+    e.returnValue = 'Você tem um rascunho não salvo. Tem certeza que deseja sair?';
+    return e.returnValue;
+  }
+});
+
+// ── Log de inicialização ──────────────────────────────────────
+console.log('[AgroFlux] Versão 4.5.0 - Arquitetura OS CAMPO');
+console.log('[AgroFlux] Firestore é a única fonte de verdade');
+console.log('[AgroFlux] Sincronização em tempo real via onSnapshot');
