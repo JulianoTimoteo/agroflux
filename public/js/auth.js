@@ -158,48 +158,66 @@ async function loadUserProfile(firebaseUser) {
     S.campoEquipe  = LS.get('campoEquipe_' + uid,  '');
     if (!S.campoEquipe && profile.Equipes?.length) S.campoEquipe = profile.Equipes[0];
 
-    // ── Carrega preferências cross-device do Firestore ────────
-    // Recupera estado que o usuário deixou em qualquer dispositivo:
-    // aba ativa, equipe selecionada, pendentes e rascunho do campo.
+    // ── Sincronização bidirecional de estado cross-device ─────
+    // Combina localStorage (este dispositivo) com Firestore (todos
+    // os dispositivos) em AMBAS as direções: desce dados que faltam
+    // localmente E sobe dados locais que ainda não chegaram ao
+    // Firestore (pendentes criados offline ou antes do deploy).
     try {
       const prefs = await loadUserPrefs(uid);
 
-      // Aba ativa salva na última sessão
+      // ── Aba ativa ──────────────────────────────────────────
       if (prefs.activeTab) S.activeTab = prefs.activeTab;
 
-      // Equipe do Campo — Firestore sobrepõe localStorage se existir
+      // ── Equipes ────────────────────────────────────────────
       if (prefs.campoEquipe) {
         S.campoEquipe = prefs.campoEquipe;
         LS.set('campoEquipe_' + uid, prefs.campoEquipe);
       } else if (!S.campoEquipe && profile.Equipes?.length) {
         S.campoEquipe = profile.Equipes[0];
       }
-
-      // Equipes do Dashboard e tabela consolidada
       if (prefs.dashEquipe) S.dashEquipe = prefs.dashEquipe;
       if (prefs.hbEquipe)   S.hbEquipe   = prefs.hbEquipe;
 
-      // Pendentes: merge Firestore + localStorage (sem duplicar)
-      // Prioridade: se o Firestore tem registros que o localStorage não tem,
-      // incorpora (útil ao logar num novo dispositivo).
-      if (Array.isArray(prefs.pendentes) && prefs.pendentes.length > 0) {
-        const localPend = S.pendentes;
-        const localIds  = new Set(localPend.map(p => String(p.id)));
-        const remotePend = prefs.pendentes.filter(p => !localIds.has(String(p.id)));
-        if (remotePend.length > 0) {
-          S.pendentes = [...localPend, ...remotePend];
-          LS.set('pendentes_' + uid, S.pendentes);
+      // ── Merge BIDIRECIONAL de pendentes ────────────────────
+      // localPend  = o que está neste dispositivo (localStorage)
+      // cloudPend  = o que está na nuvem (Firestore)
+      // merged     = union sem duplicatas (id como chave)
+      // Se localStorage tinha algo que a nuvem não tinha, sobe.
+      const localPend = S.pendentes;
+      const cloudPend = Array.isArray(prefs.pendentes) ? prefs.pendentes : [];
+      const byId      = new Map();
+      [...cloudPend, ...localPend].forEach(p => byId.set(String(p.id), p));
+      const merged    = Array.from(byId.values());
+
+      if (merged.length > 0) {
+        S.pendentes = merged;
+        LS.set('pendentes_' + uid, merged);
+        // Sobe para a nuvem se localStorage tinha pendentes ausentes dela
+        const cloudIds   = new Set(cloudPend.map(p => String(p.id)));
+        const hasLocalOnly = localPend.some(p => !cloudIds.has(String(p.id)));
+        if (hasLocalOnly) {
+          import('./preferences.js').then(({ savePendentesCloud }) =>
+            savePendentesCloud(merged, uid)
+          );
         }
       }
 
-      // Rascunho do Campo — restaura do Firestore se não houver local
+      // ── Rascunho do Campo ──────────────────────────────────
       if (prefs.campoDraft && !LS.get('draft_campo_' + uid)) {
         LS.set('draft_campo_' + uid, prefs.campoDraft);
       }
+
+      // ── Sobe prefs locais ausentes na nuvem ────────────────
+      const toSync = {};
+      if (!prefs.campoEquipe && S.campoEquipe) toSync.campoEquipe = S.campoEquipe;
+      if (!prefs.activeTab   && S.activeTab)   toSync.activeTab   = S.activeTab;
+      if (Object.keys(toSync).length > 0) {
+        import('./preferences.js').then(({ saveUserPrefs }) => saveUserPrefs(toSync));
+      }
     } catch (e) {
-      console.warn('[Auth] Falha ao carregar preferências — usando defaults', e);
+      console.warn('[Auth] Falha ao carregar preferências — usando defaults', e?.code || e);
     }
-    // ─────────────────────────────────────────────────────────
 
     // Garante que pendentes apareçam na tabela antes da sincronização
     S.pendentes.forEach(p => {
