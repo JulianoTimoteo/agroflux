@@ -3,17 +3,6 @@
                 modais, toasts, tabelas-base, formulários comuns
    ═══════════════════════════════════════════════════════════════ */
 
-/* Definições de Fallback: Garante arredondamento mesmo se global.css falhar */
-:root {
-  --r: 8px;           /* Arredondamento padrão para botões e inputs */
-  --r-lg: 12px;       /* Arredondamento para cards e modais */
-  --border: #e0e2e0;
-  --tr: 0.2s ease;
-  --bg: #eef2f0;
-  --g800: #2e7d32;
-  --g900: #1b5e20;
-  --text: #333;
-}
 
 #app{display:none;min-height:100vh;background:var(--bg)}
 

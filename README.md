@@ -1,13 +1,37 @@
-# HerbTratos v4 — Pro (Modular Edition)
+# AgroFlux v4.5 — Sistema de Gestão Agrícola Pro (PWA)
 
-Migração do monolito `index.html` (2.656 linhas) para uma estrutura **modular** baseada em ES Modules, com Firebase Auth + Firestore como backend. Todo comportamento original foi preservado 1:1; apenas a organização do código foi refatorada.
+O **AgroFlux** é uma solução progressiva (PWA) de alta performance para apontamento e monitoramento de operações agrícolas em tempo real. Projetado para funcionar em ambientes de campo com conectividade instável, o sistema utiliza uma arquitetura modular moderna com **Firebase** e foco total na experiência do usuário mobile.
+
+---
+
+## 🚀 Funcionalidades Principais
+
+### 🚜 Apontamento de Campo (Aba Campo)
+- **Offline-First:** Lançamentos são salvos localmente (Pendentes) e sincronizados automaticamente quando há conexão.
+- **Sistema de Rascunho (Draft):** Salva automaticamente o progresso do preenchimento para evitar perda de dados por fechamento acidental ou deslogue.
+- **Experiência Mobile Nativa:**
+  - Barra de progresso visual do formulário.
+  - Navegação inteligente entre campos via "Enter/Next".
+  - Efeito de zoom e ênfase no campo em foco.
+  - Modais estilo *Bottom Sheet* para facilitar o uso com uma mão.
+- **Validação de Meta:** Indicador visual instantâneo (Atingido/Não Atingido) baseado no rendimento planejado vs. realizado.
+
+### 📊 Inteligência e Resultados
+- **Dashboard Real-time:** KPIs dinâmicos e gráficos (Chart.js) com interface *Glassmorphism*.
+- **Tabela Consolidada (HerbTratos):** Comparativo direto entre Planejado vs. Realizado por equipe.
+- **Exportação de Dados:** Suporte para exportação em CSV (Excel) e geração de relatórios em imagem (PNG) da performance da equipe.
+
+### ⚙️ Administração e Customização
+- **Configuração de Colunas Dinâmicas:** Administradores podem criar campos extras (ex: volume m³, fardos, insumos) específicos para cada equipe (Tratos, Herbicida, Preparo, etc.).
+- **Gestão de Ativos:** Controle completo de Frotas, Rendimentos e Operações Agrícolas.
+- **Controle de Acesso (RBAC):** Níveis de permissão granulares (Operador, Administrador, Master) com restrição de acesso por abas e por equipes específicas.
 
 ---
 
 ## Estrutura de Pastas
 
 ```text
-herbtratos-pro/
+agroflux-main/
 ├── firebase.json            ← config para Firebase Hosting
 ├── firestore.rules          ← regras de segurança (cole no console)
 ├── .env.example             ← referência das chaves Firebase
@@ -42,6 +66,7 @@ herbtratos-pro/
         ├── registros.js       ← tabela HerbTratos + exports
         ├── dashboard.js       ← KPIs + charts
         ├── admin.js           ← Frotas, Rendimentos, Operações
+        ├── config-colunas.js  ← Configuração dinâmica de metas extras
         ├── usuarios.js        ← gerenciamento de contas (master)
         ├── config-colunas.js  ← modal "Configurar Colunas"
         └── app.js             ← entry point (window.HT + boot)
@@ -60,49 +85,20 @@ fertratos (projeto)
 │   ├── planoHoras          → { items: [...] }
 │   ├── operacoesAgricolas  → { items: [...] }
 │   └── team_configs        → { config: { equipe: [colunas]... } }
-│
-├── tratos/{docId}          → registros — Equipe Tratos
-├── biomassa/{docId}        → registros — Equipe Biomassa
-├── preparo/{docId}         → registros — Equipe Preparo
-├── linhaamarela/{docId}    → registros — Linha Amarela
-├── fertirrigacao/{docId}   → registros — Fertirrigação
-│
-└── usuarios/{uid}          → perfis vinculados ao Firebase Auth UID
-    { Nome, Email, Login, Nivel, Ativo, Abas, criadoEm }
+... (coleções por equipe e usuários)
 ```
 
 ---
 
-## Deploy
+## 🛠 Tecnologias Utilizadas
 
-### 1. Console Firebase
+- **Frontend:** HTML5, CSS3 (Variáveis nativas, Grid, Flexbox), JavaScript Moderno (ES6+ Modules).
+- **PWA:** Service Workers, Web App Manifest.
+- **Backend:** Firebase Authentication (Login por E-mail ou Apelido), Cloud Firestore (Banco NoSQL em tempo real).
+- **Gráficos:** Chart.js.
+- **Utilidades:** html2canvas (Exportação de imagem), FontAwesome (Ícones).
 
-1. Acesse [console.firebase.google.com](https://console.firebase.google.com) → projeto `fertratos`
-2. **Authentication** → Sign-in method → habilite **E-mail/senha**
-3. **Firestore** → crie o banco (modo produção)
-4. **Firestore** → Rules → cole o conteúdo de `firestore.rules`
-
-### 2. Firebase Hosting (recomendado)
-
-```bash
-# Na raiz do repositório (mesmo diretório que firebase.json)
-firebase login
-firebase use fertratos
-firebase deploy --only hosting
-```
-
-O conteúdo de `public/` será publicado automaticamente.
-
-### 3. Servir localmente (sem Firebase CLI)
-
-ES Modules exigem servir via HTTP — não funciona abrindo `index.html` direto no browser. Use qualquer servidor estático:
-
-```bash
-cd public
-python3 -m http.server 5500
-# abra http://localhost:5500
-```
-
+---
 ---
 
 ## Primeiro Acesso
@@ -120,8 +116,7 @@ python3 -m http.server 5500
 | Nível           | Acesso                                       |
 |:----------------|:---------------------------------------------|
 | `operador`      | Campo + HerbTratos + Dashboard               |
-| `herbtratos`    | Campo + HerbTratos + Dashboard               |
-| `administrador` | + aba Admin (frotas, rendimentos, plano)     |
+| `administrador` | Campo + HerbTratos + Dash + Admin (Frotas/Rend) |
 | `master`        | Tudo + aba Usuários                          |
 
 ---
