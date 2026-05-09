@@ -262,6 +262,35 @@ export function clearCampoDraft() {
   if (uid) LS.rm('draft_campo_' + uid);
 }
 
+// ── LIMPAR CACHE LOCAL (pendentes antigos) ────────────────────
+export function limparCacheLocal() {
+  const uid = auth.currentUser?.uid;
+  if (!uid) {
+    toast('Nenhum usuário logado.', 'w');
+    return;
+  }
+  
+  // Limpa pendentes e realizados do localStorage
+  LS.rm('pendentes_' + uid);
+  LS.rm('realizados_' + uid);
+  
+  // Limpa os arrays globais
+  S.pendentes = [];
+  S.realizados = {};
+  
+  // Re-renderiza a tabela
+  renderPendentes();
+  
+  toast('Cache local limpo! Apenas dados do Firestore serão exibidos.', 's');
+  
+  // Opcional: recarrega os dados do Firestore
+  setTimeout(() => {
+    import('./realtime.js').then(({ loadFromFirestore }) => {
+      loadFromFirestore();
+    });
+  }, 500);
+}
+
 function _validarFormCampo() {
   const dt = gv('cData'), cod = gv('cCodOp'), op = gv('cOp'), fr = gv('cFrota'), mod = gv('cModelo'), turno = gv('cTurno'), sub = gv('cSub');
   
@@ -367,15 +396,21 @@ export async function salvarCampo() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// LISTA DE PENDENTES (AGORA APENAS VISUALIZAÇÃO LOCAL)
-// OBS: Pendentes são apenas registros que não foram salvos ainda?
-// Na nova arquitetura, isso é apenas um cache local.
+// LISTA DE PENDENTES (APENAS VISUALIZAÇÃO LOCAL)
 // ═══════════════════════════════════════════════════════════════
 
 export function renderPendentes() {
+  // Filtra apenas registros que NÃO estão no Firestore
   const filtered = S.pendentes.filter(r => {
     const op = getOperacaoAgricola(r.codOperacao);
-    return op && norm(op.Equipe || op.equipe) === norm(S.campoEquipe);
+    if (!op) return false;
+    
+    // Verifica se este registro já existe no Firestore
+    const key = `${String(r.codOperacao).trim()}|${(r.modelo || '').trim()}|${String(r.frota).trim()}`;
+    const existsInFirestore = !!S.realizados[key];
+    
+    // Só mostra pendentes que NÃO estão no Firestore
+    return !existsInFirestore && norm(op.Equipe || op.equipe) === norm(S.campoEquipe);
   });
 
   const config = S.teamConfigs[S.campoEquipe] || [];
@@ -397,24 +432,28 @@ export function renderPendentes() {
 
   txt('pendCnt', filtered.length);
 
-  tbody.innerHTML = page.length ? page.map(r =>
-    `<tr>
-      <td data-label="Selecionar"><input type="checkbox" class="pend-check" data-id="${r.id}"></td>
-      <td data-label="Cód." class="mono">${r.codOperacao}</td>
-      <td data-label="Operação" class="td-l">${tc(r.descricao)}</td>
-      <td data-label="Frota">${r.frota}</td>
-      <td data-label="Modelo" class="td-l">${tc(r.modelo)}</td>
-      <td data-label="Horas">${fmt2(r.horasReal)}</td>
-      <td data-label="Há/Dia">${fmt2(r.haDia)}</td>
-      ${extraCols.map(c => `<td data-label="${c.label}">${fmt2(r.extras?.[c.id] || 0)}</td>`).join('')}
-      <td data-label="Data" style="font-size:.6rem">${r.data||''}</td>
-      <td data-label="Status"><span class="badge bdg-pendente">Local</span></td>
-      <td data-label="Ação">
-        <button class="btn btn-warning btn-xs" onclick="window.HT && HT.editarPend(${r.id})"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-danger btn-xs" onclick="window.HT && HT.delPend(${r.id})"><i class="fas fa-trash"></i></button>
-      </td>
-    </tr>`
-  ).join('') : `<tr><td colspan="${10 + extraCols.length}" class="empty-row"><i class="fas fa-check-circle" style="color:#4caf50"></i> Nenhum registro local</td><td class="empty-row" colspan="${extraCols.length + 1}"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td></td>`;
+  if (page.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${10 + extraCols.length}" class="empty-row"><i class="fas fa-check-circle" style="color:#4caf50"></i> Nenhum registro local - tudo sincronizado!</td><td class="empty-row" colspan="${extraCols.length + 1}"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td></tr>`;
+  } else {
+    tbody.innerHTML = page.map(r =>
+      `<tr>
+        <td data-label="Selecionar"><input type="checkbox" class="pend-check" data-id="${r.id}"></table>
+        <td data-label="Cód." class="mono">${r.codOperacao}</td>
+        <td data-label="Operação" class="td-l">${tc(r.descricao)}</td>
+        <td data-label="Frota">${r.frota}</td>
+        <td data-label="Modelo" class="td-l">${tc(r.modelo)}</td>
+        <td data-label="Horas">${fmt2(r.horasReal)}</td>
+        <td data-label="Há/Dia">${fmt2(r.haDia)}</td>
+        ${extraCols.map(c => `<td data-label="${c.label}">${fmt2(r.extras?.[c.id] || 0)}</td>`).join('')}
+        <td data-label="Data" style="font-size:.6rem">${r.data||''}</td>
+        <td data-label="Status"><span class="badge bdg-pendente">Local</span></td>
+        <td data-label="Ação">
+          <button class="btn btn-warning btn-xs" onclick="window.HT && HT.editarPend(${r.id})"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-danger btn-xs" onclick="window.HT && HT.delPend(${r.id})"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>`
+    ).join('');
+  }
   
   renderPag('pendPag', filtered.length, pp, S.pages.pend, 'HT.pagPend(-1)', 'HT.pagPend(1)');
 }
@@ -441,7 +480,7 @@ export function editarPend(id) {
   S.pendentes.splice(idx, 1);
   if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   renderPendentes();
-  toast('Dados carregados para edição.', 's');
+  toast('Dados carregados para edição. Salve para enviar ao servidor.', 's');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -455,7 +494,7 @@ export async function delPend(id) {
   S.pendentes = S.pendentes.filter(p => p.id !== id);
   if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   renderPendentes();
-  toast('Removido.', 'w');
+  toast('Registro local removido.', 'w');
 }
 
 // ═══════════════════════════════════════════════════════════════
