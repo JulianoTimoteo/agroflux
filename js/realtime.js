@@ -1,22 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// realtime.js — Sincronização Firestore (estilo OS CAMPO)
-// ═══════════════════════════════════════════════════════════════
-//
-// ARQUITETURA SIMPLIFICADA:
-//
-//   🔥 FIRESTORE = ÚNICA FONTE DE VERDADE
-//   
-//   onSnapshot em TEMPO REAL para:
-//     1. admin_config/* → equipamentos, rendimentos, etc.
-//     2. Coleções por equipe → registros do dia/mês
-//     3. Usuários → lista completa (master)
-//
-//   REGRAS:
-//     1. ONLINE → dados vêm do Firestore via onSnapshot
-//     2. OFFLINE → ÚLTIMA VERSÃO conhecida via cache
-//     3. Escrita → addDoc/setDoc direto no Firestore
-//     4. SEM FILA OFFLINE → se offline, mostra erro
-//     5. SEM BOTÃO "Sincronizar" → automático
+// realtime.js — Sincronização Firestore (OS CAMPO - CORRIGIDO)
 // ═══════════════════════════════════════════════════════════════
 
 import {
@@ -30,22 +13,22 @@ import {
 } from './utils.js';
 import { refreshAll } from './refresh.js';
 
-// ── Detach listeners ativos antes de re-anexar ────────────────
+// ── Detach listeners ativos ────────────────────────────────
 export function detachListeners() {
   if (S.listeners && S.listeners.length) {
     const activeListeners = [...S.listeners];
     S.listeners = [];
     activeListeners.forEach(unsub => {
       if (typeof unsub === 'function') {
-        try { unsub(); } catch(e) { /* silencia */ }
+        try { unsub(); } catch(e) { }
       }
     });
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 1. ADMIN_CONFIG — Configurações do sistema (onSnapshot)
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// 1. ADMIN_CONFIG
+// ═══════════════════════════════════════════════════════════
 
 export function subscribeAdminConfig() {
   const configs = [
@@ -78,7 +61,7 @@ export function subscribeAdminConfig() {
           _normalizeOps();
         }
         
-        console.log(`[Realtime] ${name} atualizado via Firestore`);
+        console.log(`[Realtime] ${name} atualizado`);
         refreshAll();
       }
     }, (err) => {
@@ -90,11 +73,10 @@ export function subscribeAdminConfig() {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 2. REGISTROS DO DIA (onSnapshot por equipe)
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// 2. REGISTROS (TODOS OS DIAS, NÃO APENAS HOJE)
+// ═══════════════════════════════════════════════════════════
 
-// Mapeamento de equipe → nome da coleção no Firestore
 const TEAM_TO_COLLECTION = {
   'herbicida': 'herbicida',
   'tratos': 'tratos',
@@ -104,10 +86,7 @@ const TEAM_TO_COLLECTION = {
   'fertirrigacao': 'fertirrigacao'
 };
 
-export function subscribeTeamRecords(customDate = null) {
-  const targetDate = customDate || todayBR();
-  
-  // Determina quais coleções o usuário pode ver
+export function subscribeAllRecords() {
   const userAbas = S.session?.Abas || [];
   const nivel = S.session?.Nivel || '';
   const isPrivileged = ['master', 'administrador', 'admin'].includes(nivel.toLowerCase());
@@ -120,17 +99,24 @@ export function subscribeTeamRecords(customDate = null) {
     const colName = TEAM_TO_COLLECTION[team.toLowerCase()];
     if (!colName) continue;
     
+    // 🔥 CORREÇÃO: NÃO filtrar por data - pegar TODOS os registros
+    // ou filtrar por período maior (últimos 30 dias)
+    const trintaDiasAtras = new Date();
+    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+    const dataLimite = trintaDiasAtras.toLocaleDateString('pt-BR');
+    
     const q = query(
       collection(db, colName),
-      where('data', '==', String(targetDate))
+      where('data', '>=', dataLimite)
     );
     
     const unsub = onSnapshot(q, (snapshot) => {
+      // 🔥 CRÍTICO: Limpa e recarrega TODOS os registros da coleção
       const batchReal = {};
       
       snapshot.forEach(doc => {
         const r = doc.data();
-        const key = `${String(r.codOperacao).trim()}|${(r.modelo || '').trim()}|${String(r.frota).trim()}`;
+        const key = `${String(r.codOperacao).trim()}|${(r.modelo || '').trim()}|${String(r.frota).trim()}|${r.data}`;
         batchReal[key] = {
           id: doc.id,
           col: colName,
@@ -140,34 +126,32 @@ export function subscribeTeamRecords(customDate = null) {
           acaoCorretiva: r.acao || '',
           obs: r.observacao || '',
           extras: r.extras || {},
-          extrasPlan: r.extrasPlan || {}
+          extrasPlan: r.extrasPlan || {},
+          data: r.data
         };
       });
       
-      // Remove registros antigos DESTA coleção antes de inserir novos
+      // 🔥 Mantém registros de outras coleções, mas atualiza esta
       Object.keys(S.realizados).forEach(k => {
         if (S.realizados[k]?.col === colName) delete S.realizados[k];
       });
       Object.assign(S.realizados, batchReal);
       
-      // Atualiza cache (apenas para leitura offline)
       const uid = S.session?.uid;
       if (uid) LS.set('realizados_' + uid, S.realizados);
       
       console.log(`[Realtime] ${colName} atualizado: ${snapshot.size} registros`);
       refreshAll();
     }, (err) => {
-      if (err?.code !== 'permission-denied') {
-        console.warn(`[Realtime] Erro em ${colName}:`, err?.code);
-      }
+      console.warn(`[Realtime] Erro em ${colName}:`, err?.code);
     });
     S.listeners.push(unsub);
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 3. USUÁRIOS (apenas para master)
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// 3. USUÁRIOS
+// ═══════════════════════════════════════════════════════════
 
 export function subscribeUsuarios() {
   const nivel = S.session?.Nivel || '';
@@ -181,67 +165,53 @@ export function subscribeUsuarios() {
     console.log(`[Realtime] Usuários atualizado: ${snapshot.size} registros`);
     refreshAll();
   }, (err) => {
-    if (err?.code !== 'permission-denied') {
-      console.warn('[Realtime] Erro em usuários:', err?.code);
-    }
+    console.warn('[Realtime] Erro em usuários:', err?.code);
   });
   S.listeners.push(unsub);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 4. CARGA INICIAL (inicia todos os listeners)
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// 4. CARGA INICIAL
+// ═══════════════════════════════════════════════════════════
 
-export async function loadFromFirestore(customDate = null) {
+export async function loadFromFirestore() {
   if (!navigator.onLine) {
     syncUI('', 'Offline — dados do cache');
     return;
   }
   
   syncUI('warn', 'Conectando...');
-  
-  // Remove listeners antigos
   detachListeners();
   
-  // Restaura pendentes do cache (apenas para visualização)
   const uid = S.session?.uid;
   if (uid) {
     const storedPend = LS.get('pendentes_' + uid);
-    if (Array.isArray(storedPend) && storedPend.length > 0) {
-      S.pendentes = storedPend;
-    } else {
-      S.pendentes = [];
-    }
+    S.pendentes = Array.isArray(storedPend) ? storedPend : [];
   }
   
-  // Limpa realizados para receber dados frescos
   S.realizados = {};
   
   try {
-    // Inicia listeners
     subscribeAdminConfig();
-    subscribeTeamRecords(customDate);
+    subscribeAllRecords();  // 🔥 Agora pega TODOS os registros
     subscribeUsuarios();
     
     syncUI('ok', 'Conectado');
     console.log('[Realtime] Todos os listeners iniciados');
     refreshAll();
   } catch (e) {
-    if (e?.code !== 'permission-denied') {
-      console.error('[Realtime] Erro ao iniciar listeners:', e);
-    }
+    console.error('[Realtime] Erro:', e);
     syncUI('err', 'Erro de conexão');
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 5. ESCRITA DIRETA NO FIRESTORE (sem fila)
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// 5. ESCRITA DIRETA
+// ═══════════════════════════════════════════════════════════
 
-// Salva um registro de campo diretamente no Firestore
 export async function saveCampoRecord(record) {
   if (!navigator.onLine) {
-    toast('Sem conexão com a internet. Tente novamente quando estiver online.', 'e');
+    toast('Sem conexão. Tente novamente.', 'e');
     return false;
   }
   
@@ -262,27 +232,25 @@ export async function saveCampoRecord(record) {
       createdAt: serverTimestamp()
     });
     
-    toast('Registro salvo com sucesso!', 's');
+    toast('Registro salvo!', 's');
     playSuccessSound();
     return true;
   } catch (e) {
-    console.error('[Save] Erro ao salvar:', e);
-    toast('Erro ao salvar registro: ' + (e.message || 'Verifique sua conexão'), 'e');
+    console.error('[Save] Erro:', e);
+    toast('Erro ao salvar: ' + (e.message || 'Verifique sua conexão'), 'e');
     return false;
   } finally {
     loading(false);
   }
 }
 
-// Atualiza um registro existente
 export async function updateCampoRecord(col, docId, updates) {
   if (!navigator.onLine) {
-    toast('Sem conexão com a internet.', 'e');
+    toast('Sem conexão.', 'e');
     return false;
   }
   
   loading(true, 'Atualizando...');
-  
   try {
     await updateDoc(doc(db, col, docId), {
       ...updates,
@@ -291,86 +259,63 @@ export async function updateCampoRecord(col, docId, updates) {
     toast('Registro atualizado!', 's');
     return true;
   } catch (e) {
-    console.error('[Update] Erro:', e);
-    toast('Erro ao atualizar registro', 'e');
+    toast('Erro ao atualizar', 'e');
     return false;
   } finally {
     loading(false);
   }
 }
 
-// Remove um registro
 export async function deleteCampoRecord(col, docId) {
   if (!navigator.onLine) {
-    toast('Sem conexão com a internet.', 'e');
+    toast('Sem conexão.', 'e');
     return false;
   }
   
-  const confirm = await customConfirm('Excluir', 'Tem certeza que deseja excluir este registro?', 'Excluir', 'Cancelar');
+  const confirm = await customConfirm('Excluir', 'Tem certeza?', 'Excluir', 'Cancelar');
   if (!confirm) return false;
   
   loading(true, 'Excluindo...');
-  
   try {
     await deleteDoc(doc(db, col, docId));
     toast('Registro excluído!', 's');
     return true;
   } catch (e) {
-    console.error('[Delete] Erro:', e);
-    toast('Erro ao excluir registro', 'e');
+    toast('Erro ao excluir', 'e');
     return false;
   } finally {
     loading(false);
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 6. ADMIN_CONFIG — Salvar configurações
-// ═══════════════════════════════════════════════════════════════
-
 export async function saveAdminConfig(type, items) {
   if (!navigator.onLine) {
-    toast('Sem conexão para salvar configurações.', 'e');
+    toast('Sem conexão.', 'e');
     return false;
   }
-  
   try {
-    await setDoc(doc(db, 'admin_config', type), { 
-      items, 
-      updatedAt: new Date().toISOString() 
-    });
-    toast(`${type} salvo com sucesso!`, 's');
+    await setDoc(doc(db, 'admin_config', type), { items, updatedAt: new Date().toISOString() });
+    toast(`${type} salvo!`, 's');
     return true;
   } catch (e) {
-    console.warn('[FB] saveAdminConfig erro:', e);
-    toast('Erro ao salvar configuração', 'e');
+    toast('Erro ao salvar', 'e');
     return false;
   }
 }
-
-// ═══════════════════════════════════════════════════════════════
-// 7. OBSERVAÇÃO COA (inline)
-// ═══════════════════════════════════════════════════════════════
 
 export async function updateObs(col, docId, val) {
   if (!col || !docId) return;
   if (!navigator.onLine) {
-    toast('Sem conexão para salvar observação.', 'e');
+    toast('Sem conexão.', 'e');
     return;
   }
-  
   try {
     await updateDoc(doc(db, col, docId), { observacao: val });
-    toast('Observação COA salva!', 's');
+    toast('Observação salva!', 's');
   } catch (e) {
-    console.error('[COA Update]', e);
-    toast('Erro ao salvar Observação COA.', 'e');
+    toast('Erro ao salvar', 'e');
   }
 }
-
-// ═══════════════════════════════════════════════════════════════
-// 8. NORMALIZAÇÃO DAS OPERAÇÕES AGRÍCOLAS
-// ═══════════════════════════════════════════════════════════════
 
 export function _normalizeOps() {
   if (!S.operacoesAgricolas || !S.operacoesAgricolas.length) return;
@@ -396,18 +341,12 @@ export function _normalizeOps() {
   }).filter(o => o.CodOperacao);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 9. SINCRONIZAÇÃO AGENDADA (apenas para atualizar data)
-// ═══════════════════════════════════════════════════════════════
-
 export function startHourlySync() {
   const now = new Date();
   const msUntilNextHour = (60 - now.getMinutes()) * 60000 - (now.getSeconds() * 1000);
   
   setTimeout(() => {
     if (navigator.onLine && S.session) {
-      // Recarrega apenas para mudar a data (se necessário)
-      console.log('[Sync] Sincronização automática da hora cheia');
       loadFromFirestore();
     }
     setInterval(() => {
@@ -418,30 +357,19 @@ export function startHourlySync() {
   }, msUntilNextHour);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// 10. COMPATIBILIDADE (removido sincronizarCampo)
-// ═══════════════════════════════════════════════════════════════
-
-// NOTA: A função sincronizarCampo foi REMOVIDA porque agora os registros
-// são salvos DIRETAMENTE no Firestore via saveCampoRecord().
-// Não existe mais o conceito de "pendentes" como fila offline.
-
-// Função vazia para manter compatibilidade com código legado
 export async function sincronizarCampo() {
-  toast('Os registros agora são salvos automaticamente!', 'i');
+  toast('Os registros são salvos automaticamente!', 'i');
 }
 
-// Função vazia para compatibilidade
 export function syncNow() {
   if (navigator.onLine) {
     loadFromFirestore();
     toast('Dados atualizados!', 's');
   } else {
-    toast('Sem conexão com a internet.', 'w');
+    toast('Sem conexão.', 'w');
   }
 }
 
-// Atualiza a label "Próxima atualização"
 export function updateSyncTimerUI() {
   const now = new Date();
   const nextHour = (now.getHours() + 1) % 24;
