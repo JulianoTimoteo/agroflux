@@ -104,19 +104,16 @@ service cloud.firestore {
     }
 
     // ── Pendentes por documento (subcoleção) ──────────────────
-    // Cada usuário lê/escreve/deleta APENAS seus próprios pendentes.
-    // Admins/master podem ler pendentes de qualquer usuário (suporte).
+    // Regra simplificada: SEM isAdmin() no read.
+    // isAdmin() chama getUser() server-side; em condições de timing/quota
+    // isso faz getDocs lançar erro silencioso e bloqueia a sincronização.
     match /pendentes_campo/{uid}/items/{itemId} {
-      allow read:   if isAuth() && (request.auth.uid == uid || isAdmin());
-      allow create, update: if isAuth() && request.auth.uid == uid;
-      allow delete: if isAuth() && (request.auth.uid == uid || isAdmin());
+      allow read, write: if isAuth() && request.auth.uid == uid;
     }
 
     // ── Pendentes offline temporários ─────────────────────────
-    // Registros criados sem internet ficam aqui até migrarem para
-    // pendentes_campo quando o dispositivo reconectar.
     match /pending_temp/{uid}/items/{itemId} {
-      allow read, write, delete: if isAuth() && request.auth.uid == uid;
+      allow read, write: if isAuth() && request.auth.uid == uid;
     }
 
     // ── Dashboards (futuro) ───────────────────────────────────

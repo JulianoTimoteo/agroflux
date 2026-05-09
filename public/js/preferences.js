@@ -174,8 +174,8 @@ export async function loadAllPendentesCloud(uid) {
     //    Se o upload falhar, permanece na fila para ser retentado em flushOfflinePendentes.
     //    Se o upload tiver sucesso, é removido da fila.
     const onlyLocal = local.filter(p => !cloudIds.has(String(p.id)));
+    let uploadErrors = 0;
     for (const p of onlyLocal) {
-      // Pré-adiciona à fila offline: se falhar abaixo, será retentado
       _addOfflineQueue(uid, String(p.id));
       let finalP = { ...p };
       try {
@@ -184,7 +184,6 @@ export async function loadAllPendentesCloud(uid) {
           const ex = existingSnap.data();
           const isSame = ex.frota === p.frota && ex.codOperacao === p.codOperacao && ex.data === p.data;
           if (!isSame) {
-            // Remapeia para ID único
             finalP = {
               ...p,
               id: `${uid}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`
@@ -193,22 +192,27 @@ export async function loadAllPendentesCloud(uid) {
         }
         await setDoc(_pendDoc(uid, finalP.id), { ...finalP, _savedAt: new Date().toISOString() });
         cloud.push(finalP);
-        // Upload OK: remove da fila offline (ID original e remapeado)
         _removeOfflineQueue(uid, String(p.id));
         if (finalP.id !== p.id) _removeOfflineQueue(uid, String(finalP.id));
+        console.log('[Prefs] OK upload pendente:', String(finalP.id));
       } catch (e) {
-        console.warn('[Prefs] Falha ao subir pendente local:', finalP.id, e?.code || e);
-        // Item permanece na fila offline para retry; mostra localmente
+        uploadErrors++;
+        console.error('[Prefs] FALHA upload pendente', String(finalP.id), e?.code, e?.message, e);
         cloud.push(finalP);
       }
+    }
+    if (uploadErrors > 0) {
+      try {
+        const { toast } = await import('./utils.js');
+        toast('\u26a0\ufe0f ' + uploadErrors + ' pendente(s) n\u00e3o foram sincronizados. Erro no Firestore.', 'e');
+      } catch (_) {}
     }
 
     const merged = cloud;
     LS.set('pendentes_' + uid, merged);
-    // NÃO limpa toda a fila offline aqui — só as bem-sucedidas foram removidas acima.
     return merged;
   } catch (e) {
-    console.warn('[Prefs] loadAllPendentesCloud falhou:', e?.code);
+    console.error('[Prefs] loadAllPendentesCloud FALHOU:', e?.code, e?.message, e);
     return local;
   }
 }

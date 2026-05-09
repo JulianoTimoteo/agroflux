@@ -6,7 +6,7 @@
 //   Imagens / fontes → Cache-first    (raramente mudam, vale cachear)
 //   Firebase / APIs  → Nunca intercepta
 
-const CACHE_NAME = 'herbtratos-v11';
+const CACHE_NAME = 'herbtratos-v12';
 
 const STATIC_ASSETS = [
   './',

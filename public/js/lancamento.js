@@ -406,10 +406,14 @@ export async function salvarCampo() {
 
 // ── Lista de pendentes ────────────────────────────────────────
 export function renderPendentes() {
-  const filtered = S.pendentes.filter(r => {
-    const op = getOperacaoAgricola(r.codOperacao);
-    return op && norm(op.Equipe || op.equipe) === norm(S.campoEquipe);
-  });
+  // Se nenhuma equipe está selecionada, mostra TODOS os pendentes
+  // (evita "Nenhum pendente" no Chrome quando S.campoEquipe = '')
+  const filtered = S.campoEquipe
+    ? S.pendentes.filter(r => {
+        const op = getOperacaoAgricola(r.codOperacao);
+        return op && norm(op.Equipe || op.equipe) === norm(S.campoEquipe);
+      })
+    : [...S.pendentes];
 
   const config = S.teamConfigs[S.campoEquipe] || [];
   const extraCols = config.filter(c => c.type !== 'system');
