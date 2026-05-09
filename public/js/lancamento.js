@@ -310,7 +310,8 @@ function _validarFormCampo() {
   document.querySelectorAll('.c-extra-in').forEach(input => { extras[input.dataset.id] = parseFloat(input.value.replace(',', '.')) || 0; });
 
   return {
-    id: Date.now(), data: formattedDate, codOperacao: cod, descricao: op,
+    id: `${auth.currentUser?.uid || 'x'}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+    data: formattedDate, codOperacao: cod, descricao: op,
     frota: fr, modelo: mod, turno, haDia, horasReal: horas,
     motivo: motivo || '--', acao: acao || '--', observacao: '--',
     timestamp: new Date().toISOString(),

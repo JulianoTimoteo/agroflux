@@ -80,19 +80,47 @@ export async function loadUserPrefs(uid) {
 // ── Salva/atualiza um único pendente ──────────────────────────
 export async function addPendenteCloud(pend, uid) {
   if (!uid || !pend?.id) return;
-  _upsertLocalPend(pend, uid);
 
-  if (!navigator.onLine) {
-    // Guarda em pending_temp quando ficar online depois
-    _addOfflineQueue(uid, pend.id);
-    return;
-  }
-  try {
-    await setDoc(_pendDoc(uid, pend.id), { ...pend, _savedAt: new Date().toISOString() });
-    _removeOfflineQueue(uid, pend.id);
-  } catch (e) {
-    console.warn('[Prefs] addPendenteCloud falhou:', e?.code);
-    _addOfflineQueue(uid, pend.id);
+  let finalPend = { ...pend };
+
+  if (navigator.onLine) {
+    try {
+      const existingSnap = await getDoc(_pendDoc(uid, finalPend.id));
+      if (existingSnap.exists()) {
+        const existing = existingSnap.data();
+        // Colisão de ID com dados diferentes (registro de outro dispositivo)?
+        // Gera um novo ID único para não sobrescrever
+        const isSameRecord = existing.frota === finalPend.frota
+          && existing.codOperacao === finalPend.codOperacao
+          && existing.data === finalPend.data;
+        if (!isSameRecord) {
+          finalPend = {
+            ...finalPend,
+            id: `${uid}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`
+          };
+        }
+      }
+      await setDoc(_pendDoc(uid, finalPend.id), { ...finalPend, _savedAt: new Date().toISOString() });
+      _removeOfflineQueue(uid, pend.id);
+      // Se o ID foi remapeado, atualiza localmente
+      if (finalPend.id !== pend.id) {
+        _removeLocalPend(pend.id, uid);
+      }
+      _upsertLocalPend(finalPend, uid);
+      // Sincroniza S.pendentes
+      if (Array.isArray(S.pendentes)) {
+        const idx = S.pendentes.findIndex(p => String(p.id) === String(pend.id));
+        if (idx >= 0) S.pendentes[idx] = finalPend;
+        else if (finalPend.id !== pend.id) S.pendentes.push(finalPend);
+      }
+    } catch (e) {
+      console.warn('[Prefs] addPendenteCloud falhou:', e?.code);
+      _upsertLocalPend(finalPend, uid);
+      _addOfflineQueue(uid, finalPend.id);
+    }
+  } else {
+    _upsertLocalPend(finalPend, uid);
+    _addOfflineQueue(uid, finalPend.id);
   }
 }
 
@@ -142,12 +170,26 @@ export async function loadAllPendentesCloud(uid) {
     }
 
     // 3. Sobe pendentes locais que ainda não estão na nuvem
+    //    Se o ID já existe na nuvem com dados DIFERENTES, remapeia o ID local
     const onlyLocal = local.filter(p => !cloudIds.has(String(p.id)));
     for (const p of onlyLocal) {
+      let finalP = { ...p };
       try {
-        await setDoc(_pendDoc(uid, p.id), { ...p, _savedAt: new Date().toISOString() });
-        cloud.push(p);
-      } catch (_) {}
+        const existingSnap = await getDoc(_pendDoc(uid, p.id)).catch(() => null);
+        if (existingSnap && existingSnap.exists()) {
+          const ex = existingSnap.data();
+          const isSame = ex.frota === p.frota && ex.codOperacao === p.codOperacao && ex.data === p.data;
+          if (!isSame) {
+            // Remapeia para ID único
+            finalP = {
+              ...p,
+              id: `${uid}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`
+            };
+          }
+        }
+        await setDoc(_pendDoc(uid, finalP.id), { ...finalP, _savedAt: new Date().toISOString() });
+        cloud.push(finalP);
+      } catch (_) { cloud.push(finalP); }
     }
 
     const merged = cloud;
