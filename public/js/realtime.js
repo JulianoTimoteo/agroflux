@@ -33,23 +33,16 @@ export async function loadFromFirestore(customDate = null) {
   syncUI('warn', 'Sincronizando...');
   detachListeners();
 
-  // ── CORREÇÃO: restaura pendentes e realizados do cache local ──
-  // S.pendentes inicia como [] a cada boot; sem isso os registros
-  // salvos antes de sincronizar somem ao recarregar a página ou
-  // ao re-autenticar.
+  // Restaura realizados locais como cache enquanto Firestore não responde
   const uid = S.session?.uid;
   if (uid) {
-    const storedPend = LS.get('pendentes_' + uid);
-    if (Array.isArray(storedPend) && storedPend.length > 0) {
-      S.pendentes = storedPend;
-    }
-    // Realizado local serve de cache enquanto o Firestore não responde
     const storedReal = LS.get('realizados_' + uid);
     if (storedReal && typeof storedReal === 'object') {
       S.realizados = { ...storedReal };
     }
+    // NÃO restaura S.pendentes aqui — já carregado do Firestore em auth.js
+    // e mantido em sincronia pelo subscribePendentes (onSnapshot).
   }
-  // ─────────────────────────────────────────────────────────────
 
   try {
     const collections = ['equipamentos', 'rendimentos', 'planoHoras', 'operacoesAgricolas', 'team_configs', 'teamMetadata'];

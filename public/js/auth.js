@@ -190,10 +190,9 @@ async function loadUserProfile(firebaseUser) {
       // 2. Pendentes — carrega TODOS da subcoleção (inclui migração de pending_temp)
       //    e envia offline acumulados
       const allPend = await loadAllPendentesCloud(uid);
-      if (allPend.length > 0) {
-        S.pendentes = allPend;
-        LS.set('pendentes_' + uid, allPend);
-      }
+      // Sempre aplica — mesmo se vazio (garante que localStorage de outro device não persiste)
+      S.pendentes = allPend;
+      LS.set('pendentes_' + uid, allPend);
 
       // 3. Sobe qualquer pendente offline que ficou na fila
       flushOfflinePendentes(uid).catch(() => {});
@@ -202,7 +201,8 @@ async function loadUserProfile(firebaseUser) {
       //    salvar/remover um pendente reflete AQUI imediatamente
       subscribePendentes(uid, (merged) => {
         S.pendentes = merged;
-        // Atualiza a tabela de pendentes se a aba Campo estiver visível
+        LS.set('pendentes_' + uid, merged);
+        // Re-renderiza a tabela de pendentes em qualquer aba ativa
         import('./lancamento.js').then(({ renderPendentes }) => {
           try { renderPendentes(); } catch (_) {}
         });
@@ -222,6 +222,10 @@ async function loadUserProfile(firebaseUser) {
 
     showApp();
     restoreCampoDraft(); // Restaura o rascunho APÓS o app estar visível e populado
+    // Re-renderiza pendentes com dados do Firestore (já carregados acima)
+    import('./lancamento.js').then(({ renderPendentes }) => {
+      try { renderPendentes(); } catch (_) {}
+    });
     loadFromFirestore();
     updateSyncTimerUI();
   } catch (e) {
