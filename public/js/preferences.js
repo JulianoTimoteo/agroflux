@@ -229,18 +229,22 @@ export function subscribePendentes(uid, onUpdate) {
       (snap) => {
         const cloudItems = snap.docs.map(d => d.data());
         const cloudIds = new Set(cloudItems.map(p => String(p.id)));
+        
+        // Identifica itens que foram criados offline NESTE dispositivo
+        // e que ainda não foram sincronizados com o Firestore.
+        // Estes itens devem ser mantidos na lista de pendentes localmente
+        // para que o usuário os veja até que sejam enviados.
+        const offlineQueueIds = LS.get('pend_offline_' + uid, []);
+        const allLocalPendentes = LS.get('pendentes_' + uid, []); // Todos os pendentes no localStorage
 
-        // Só adiciona itens que estão na fila offline EXPLÍCITA (criados sem internet)
-        // e que ainda não chegaram ao Firestore.
-        // NÃO mistura com todo o localStorage — isso causava divergência entre browsers.
-        const offlineIds = LS.get('pend_offline_' + uid, []);
-        const onlyOffline = offlineIds.length > 0
-          ? LS.get('pendentes_' + uid, []).filter(
-              p => offlineIds.includes(String(p.id)) && !cloudIds.has(String(p.id))
-            )
-          : [];
+        const localOfflineOnly = allLocalPendentes.filter(p =>
+          offlineQueueIds.includes(String(p.id)) && // Está na fila de pendentes offline
+          !cloudIds.has(String(p.id))               // E ainda não está no Firestore
+        );
 
-        const merged = [...cloudItems, ...onlyOffline];
+        // Mescla itens do Firestore com os pendentes offline-only locais.
+        // Esta é a "verdade" para a lista de pendentes exibida na UI.
+        const merged = [...cloudItems, ...localOfflineOnly];
         S.pendentes = merged;
         LS.set('pendentes_' + uid, merged);
         if (typeof onUpdate === 'function') onUpdate(merged);

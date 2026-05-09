@@ -392,10 +392,12 @@ export async function salvarCampo() {
   }
 
   if (uid) {
+    // Persiste cada pendente como documento separado no Firestore
+    await addPendenteCloud(finalRecord, uid);
+    
+    // Atualiza o cache local após a tentativa de nuvem
     LS.set('realizados_' + uid, S.realizados);
     LS.set('pendentes_'  + uid, S.pendentes);
-    // Persiste cada pendente como documento separado no Firestore
-    addPendenteCloud(finalRecord, uid);
   }
 
   clearCampoDraft();
