@@ -1,11 +1,20 @@
 // ═══════════════════════════════════════════════════════════════
-// lancamento.js — Aba "Campo": formulário de lançamento + pendentes
+// lancamento.js — Aba "Campo": formulário de lançamento
 // ═══════════════════════════════════════════════════════════════
-// Os "registros pendentes" vivem dentro da MESMA aba HTML do
-// formulário de lançamento (id="tab-campo"). Por coesão funcional
-// (entrada, validação, persistência local e visualização do que
-// ainda não foi sincronizado), todo o ciclo de pendentes vive
-// neste módulo.
+//
+// ARQUITETURA SIMPLIFICADA (estilo OS CAMPO):
+//
+//   🔥 FIRESTORE = ÚNICA FONTE DE VERDADE
+//   
+//   FLUXO:
+//     1. Usuário preenche formulário
+//     2. Clica em SALVAR
+//     3. addDoc direto no Firestore (via saveCampoRecord)
+//     4. onSnapshot atualiza S.realizados automaticamente
+//     5. UI reflete mudança em tempo real
+//
+//   SEM FILA OFFLINE: se offline, mostra erro e não salva
+//   SEM BOTÃO "Sincronizar": automático
 // ═══════════════════════════════════════════════════════════════
 
 import { auth } from './firebase-init.js';
@@ -14,23 +23,21 @@ import {
   el, gv, sv, txt, tc, norm, fmt2, todayBR,
   getOperacaoAgricola, getRendimento, calcHP,
   getSelectionStyle, getUniqueTeams,
-  toast, customConfirm, playSuccessSound, renderPag
+  toast, customConfirm, playSuccessSound, renderPag, loading
 } from './utils.js';
 import { refreshAll } from './refresh.js';
+import { saveCampoRecord } from './realtime.js';
 
 // ── Tabs de equipe e seleção de frota ─────────────────────────
 export function populateCampoFrotas() {
-  // Inicializa melhorias mobile na primeira chamada
   initCampoMobile();
 
   const s = S.session; const equipesPermitidas = s?.Equipes || [];
   const teamsData = getUniqueTeams();
   const teamMap = {}; teamsData.forEach(t => teamMap[norm(t).replace(/\s+/g, '')] = t);
   
-  // Define quais chaves de equipe o usuário pode ver
   const allowedTeamKeys = (s?.Nivel === 'master') ? Object.keys(teamMap) : equipesPermitidas.filter(a => teamMap[a]);
 
-  // Validação Crítica: Se a equipe atual não estiver na lista permitida do usuário, muda para a primeira permitida
   const currentKey = Object.keys(teamMap).find(k => teamMap[k] === S.campoEquipe);
   if (!allowedTeamKeys.includes(currentKey)) {
     S.campoEquipe = allowedTeamKeys.length > 0 ? teamMap[allowedTeamKeys[0]] : '';
@@ -45,8 +52,10 @@ export function populateCampoFrotas() {
       </button>
     `).join('');
   }
+  
   const frotaSel = el('cFrota');
   if (!frotaSel) return;
+  
   const frotasEquipe = S.equipamentos.filter(e => {
     if (norm(e.Equipe) === norm(S.campoEquipe)) return true;
     const ops = e.operacoesPermitidas || (e.CodOperacao ? [e.CodOperacao] : []);
@@ -55,6 +64,7 @@ export function populateCampoFrotas() {
       return op && norm(op.Equipe || op.equipe) === norm(S.campoEquipe);
     });
   });
+  
   const uniqueFrotas = [...new Set(frotasEquipe.map(e => e.Frota))].sort();
   const blank = '<option value="">Selecione...</option>';
   frotaSel.disabled = !S.campoEquipe;
@@ -92,16 +102,17 @@ export function onFrotaChange() {
   el('cExtraFields').innerHTML = extras.map(c => `
     <div class="fg"><label>${c.label} (Real.)</label><input type="number" step="0.01" class="c-extra-in" data-id="${c.id}" oninput="window.HT && HT._verificarMeta()" placeholder="0,00"></div>
   `).join('');
+  
   if (!frota) {
     sv('cModelo', ''); el('cCodOp').innerHTML = blank; el('cCodOp').disabled = true; sv('cOp', '');
     el('planBox').style.display = 'none';
     return;
   }
+  
   const selectedFrota = S.equipamentos.find(e => e.Frota === frota);
   if (selectedFrota) {
     el('cCodOp').disabled = false;
     sv('cModelo', selectedFrota.Modelo || '');
-    // Garante comparação de string para evitar erro de tipo (número vs texto)
     const permitidas = (selectedFrota.operacoesPermitidas || []).map(String);
     const allowedOps = S.operacoesAgricolas.filter(op =>
       permitidas.includes(String(op.CodOperacao)) && norm(op.Equipe) === norm(S.campoEquipe)
@@ -116,7 +127,8 @@ export function onFrotaChange() {
 
 export function onCodChange() {
   const cod = gv('cCodOp');
-  const op = getOperacaoAgricola(cod); el('cTurno').disabled = !cod;
+  const op = getOperacaoAgricola(cod); 
+  el('cTurno').disabled = !cod;
   sv('cOp', op ? op.Descricao : '');
   _atualizarPlan();
 }
@@ -135,8 +147,6 @@ function _atualizarPlan() {
   txt('pbHah', fmt2(rend)); txt('pbHoras', fmt2(hp)); txt('pbHaDia', fmt2(hdp));
   const config = S.teamConfigs[S.campoEquipe] || [];
   const extras = config.filter(c => c.type !== 'system');
-  // Exibe apenas as metas extras que possuem valor planejado definido (> 0) no painel azul
-  // Exibe apenas as metas extras que possuem valor planejado definido E que devem ser mostradas no planejado
   const extrasComMeta = extras.filter(c => c.showPlan !== false && (parseFloat(rendObj?.extrasPlan?.[c.id]) || 0) > 0);
   el('pbExtraMetas').innerHTML = extrasComMeta.map(c => `
     <div class="pbi"><label>${c.label} Plan.</label><span>${fmt2(rendObj?.extrasPlan?.[c.id] || 0)}</span></div>
@@ -163,7 +173,6 @@ export function _verificarMeta() {
   if (hReal > 0) {
     let atingiu = (hd >= S.metaPlan);
 
-    // Verifica metas de colunas extras (ex: volume m³)
     const cod = gv('cCodOp');
     const rendObj = getRendimento(cod);
     document.querySelectorAll('.c-extra-in').forEach(input => {
@@ -178,9 +187,10 @@ export function _verificarMeta() {
   const tag = el('metaTag');
   const motivoEl = el('cMotivo');
   if (!tag || !motivoEl) return;
+  
   if (status === 'atingido') {
     tag.innerHTML = '<span class="badge-meta" style="background:var(--success)"><i class="fas fa-check-circle"></i> Atingido</span>';
-    sv('cMotivo', 'Meta Atingida!');
+    if (gv('cMotivo') === '') sv('cMotivo', 'Meta Atingida!');
   } else if (status === 'nao-atingido') {
     tag.innerHTML = '<span class="badge-meta" style="background:var(--danger)"><i class="fas fa-times-circle"></i> Não Atingido</span>';
     if (gv('cMotivo') === 'Meta Atingida!') sv('cMotivo', '');
@@ -198,16 +208,13 @@ export function limparCampo() {
   el('planBox').style.display = 'none'; el('metaTag').innerHTML = ''; el('cSubDiv').style.display = 'none';
   document.querySelectorAll('.campo-erro').forEach(e => e.classList.remove('campo-erro'));
   ['cntMot','cntAcao'].forEach(id => txt(id, '0/300'));
-  
-  // Limpa o rascunho ao limpar o formulário manualmente
   clearCampoDraft();
-  
-  S.metaPlan = 0; populateCampoFrotas();
+  S.metaPlan = 0; 
+  populateCampoFrotas();
 }
 
 // ── Gerenciamento de Rascunho (Draft) ─────────────────────────
 export function saveCampoDraft() {
-  // Impede salvar rascunho se não houver usuário (ex: tela de login)
   if (!auth.currentUser) return;
   const uid = auth.currentUser?.uid;
   if (!uid) return;
@@ -228,7 +235,6 @@ export function restoreCampoDraft() {
   if (!d) return;
   if (d.data) sv('cData', d.data);
   
-  // Ordem crítica: Frota define Operações. Preenchemos em cascata.
   if (d.frota) { 
     sv('cFrota', d.frota); 
     onFrotaChange(); 
@@ -259,13 +265,10 @@ export function clearCampoDraft() {
 function _validarFormCampo() {
   const dt = gv('cData'), cod = gv('cCodOp'), op = gv('cOp'), fr = gv('cFrota'), mod = gv('cModelo'), turno = gv('cTurno'), sub = gv('cSub');
   
-  // Helper para ler números aceitando vírgula ou ponto
   const getNum = (id) => parseFloat(gv(id).replace(',', '.')) || 0;
-  
   const horas = getNum('cHoras'), haDia = getNum('cHaDia');
   const motivo = gv('cMotivo'), acao = gv('cAcao');
 
-  // Função auxiliar interna para evitar erro de classList em elementos nulos
   const markErr = (id) => { const e = el(id); if (e) e.classList.add('campo-erro'); };
 
   document.querySelectorAll('.campo-erro').forEach(e => e.classList.remove('campo-erro'));
@@ -275,10 +278,10 @@ function _validarFormCampo() {
     if (!fr) markErr('cFrota');
     if (!cod) markErr('cCodOp');
     if (horas <= 0) markErr('cHoras');
-    toast('Preencha os campos obrigatórios!', 'w'); return null;
+    toast('Preencha os campos obrigatórios!', 'w'); 
+    return null;
   }
 
-  // Sincroniza lógica de meta com a UI (considerando hectares e campos extras)
   const rendObj = getRendimento(cod);
   const atingiuHD = haDia >= S.metaPlan;
   let atingiuExtras = true;
@@ -300,55 +303,75 @@ function _validarFormCampo() {
   document.querySelectorAll('.c-extra-in').forEach(input => { extras[input.dataset.id] = parseFloat(input.value.replace(',', '.')) || 0; });
 
   return {
-    id: Date.now(), data: formattedDate, codOperacao: cod, descricao: op,
-    frota: fr, modelo: mod, turno, haDia, horasReal: horas,
-    motivo: motivo || '--', acao: acao || '--', observacao: '--',
+    data: formattedDate, 
+    codOperacao: cod, 
+    descricao: op,
+    frota: fr, 
+    modelo: mod, 
+    turno, 
+    subTurno: sub || null,
+    haDia, 
+    horasReal: horas,
+    motivo: motivo || '--', 
+    acao: acao || '--', 
+    observacao: '--',
     timestamp: new Date().toISOString(),
     extras,
-    uid: auth.currentUser?.uid || ''
+    uid: auth.currentUser?.uid || '',
+    operador: S.session?.Nome || 'Campo'
   };
 }
+
+// ═══════════════════════════════════════════════════════════════
+// SALVAR DIRETO NO FIRESTORE (sem pendentes)
+// ═══════════════════════════════════════════════════════════════
 
 export async function salvarCampo() {
   const record = _validarFormCampo();
   if (!record) return;
-  let finalRecord = { ...record };
-  const existingPendingIndex = S.pendentes.findIndex(p =>
-    p.codOperacao === record.codOperacao && p.frota === record.frota &&
-    p.modelo === record.modelo && p.data === record.data
-  );
-  if (existingPendingIndex !== -1) {
-    const existingRecord = S.pendentes[existingPendingIndex];
-    const confirmSum = await customConfirm("Registro Duplicado", `Já existe um registro para ${record.frota} - ${record.codOperacao} hoje. Deseja somar os valores?`);
+  
+  // Verifica duplicata nos registros já salvos
+  const key = `${String(record.codOperacao).trim()}|${(record.modelo || '').trim()}|${String(record.frota).trim()}`;
+  const existing = S.realizados[key];
+  
+  if (existing) {
+    const confirmSum = await customConfirm(
+      "Registro Duplicado", 
+      `Já existe um registro para ${record.frota} - ${record.codOperacao} hoje. Deseja somar os valores?`
+    );
     if (confirmSum) {
-      existingRecord.horasReal += record.horasReal;
-      existingRecord.haDia += record.haDia;
+      record.horasReal = existing.horas + record.horasReal;
+      record.haDia = existing.haDia + record.haDia;
       for (const key in record.extras) {
-        if (record.extras.hasOwnProperty(key)) existingRecord.extras[key] = (existingRecord.extras[key] || 0) + record.extras[key];
+        if (record.extras.hasOwnProperty(key)) {
+          record.extras[key] = (existing.extras?.[key] || 0) + (record.extras[key] || 0);
+        }
       }
-      existingRecord.timestamp = new Date().toISOString();
-      finalRecord = existingRecord;
       toast('Valores somados!', 's');
     } else {
-      limparCampo(); toast('Registro não salvo.', 'i'); return;
+      limparCampo(); 
+      toast('Registro não salvo.', 'i'); 
+      return;
     }
-  } else {
-    S.pendentes.push(record);
-    toast('Registro salvo!', 's');
-  }
-  const key = `${String(finalRecord.codOperacao).trim()}|${(finalRecord.modelo || '').trim()}|${String(finalRecord.frota).trim()}`;
-  S.realizados[key] = { horas: finalRecord.horasReal, haDia: finalRecord.haDia, motivo: finalRecord.motivo, acaoCorretiva: finalRecord.acao, obs: finalRecord.observacao, extras: finalRecord.extras };
-  if (auth.currentUser) {
-    LS.set('realizados_' + auth.currentUser.uid, S.realizados);
-    LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   }
   
-  // Limpa o rascunho após salvar com sucesso na lista de pendentes
-  clearCampoDraft();
-  limparCampo(); refreshAll(); playSuccessSound();
+  // Salva diretamente no Firestore
+  const success = await saveCampoRecord(record);
+  
+  if (success) {
+    clearCampoDraft();
+    limparCampo();
+    refreshAll();
+    playSuccessSound();
+  }
 }
 
-// ── Lista de pendentes ────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// LISTA DE PENDENTES (AGORA APENAS VISUALIZAÇÃO LOCAL)
+// OBS: Pendentes são apenas registros que não foram salvos ainda?
+// Na nova arquitetura, isso é apenas um cache local.
+// ═══════════════════════════════════════════════════════════════
+
 export function renderPendentes() {
   const filtered = S.pendentes.filter(r => {
     const op = getOperacaoAgricola(r.codOperacao);
@@ -367,16 +390,12 @@ export function renderPendentes() {
       <th style="width:30px"><input type="checkbox" onclick="window.HT && HT.toggleSelPend(this.checked)"></th>
       <th>Cód.</th><th>Operação</th><th>Frota</th><th>Modelo</th><th>Horas</th><th>Há/Dia</th>
       ${extraCols.map(c => `<th>${c.label}</th>`).join('')}
-      <th>Data</th><th>Status</th><th>Ação <button id="syncBtnHeader" class="btn btn-success btn-xs" onclick="window.HT && HT.sincronizarCampo()" title="Sincronizar"><i class="fas fa-fire"></i></button></th>
+      <th>Data</th><th>Status</th>
+      <th>Ação</th>
     `;
   }
 
   txt('pendCnt', filtered.length);
-  const btn = el('syncBtnHeader');
-  if (btn) {
-    btn.disabled = filtered.length === 0;
-    btn.classList.toggle('btn-pulse', filtered.length > 0);
-  }
 
   tbody.innerHTML = page.length ? page.map(r =>
     `<tr>
@@ -389,13 +408,14 @@ export function renderPendentes() {
       <td data-label="Há/Dia">${fmt2(r.haDia)}</td>
       ${extraCols.map(c => `<td data-label="${c.label}">${fmt2(r.extras?.[c.id] || 0)}</td>`).join('')}
       <td data-label="Data" style="font-size:.6rem">${r.data||''}</td>
-      <td data-label="Status"><span class="badge bdg-pendente">Pendente</span></td>
+      <td data-label="Status"><span class="badge bdg-pendente">Local</span></td>
       <td data-label="Ação">
         <button class="btn btn-warning btn-xs" onclick="window.HT && HT.editarPend(${r.id})"><i class="fas fa-edit"></i></button>
         <button class="btn btn-danger btn-xs" onclick="window.HT && HT.delPend(${r.id})"><i class="fas fa-trash"></i></button>
       </td>
     </tr>`
-  ).join('') : `<tr><td colspan="${10 + extraCols.length}" class="empty-row"><i class="fas fa-check-circle" style="color:#4caf50"></i> Nenhum pendente</td></tr>`;
+  ).join('') : `<tr><td colspan="${10 + extraCols.length}" class="empty-row"><i class="fas fa-check-circle" style="color:#4caf50"></i> Nenhum registro local</td><td class="empty-row" colspan="${extraCols.length + 1}"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td><td class="empty-row"></td></td>`;
+  
   renderPag('pendPag', filtered.length, pp, S.pages.pend, 'HT.pagPend(-1)', 'HT.pagPend(1)');
 }
 
@@ -431,7 +451,7 @@ export function pagPend(d) {
 }
 
 export async function delPend(id) {
-  if (!(await customConfirm('Excluir', 'Deseja excluir este registro pendente?'))) return;
+  if (!(await customConfirm('Excluir', 'Deseja excluir este registro local?'))) return;
   S.pendentes = S.pendentes.filter(p => p.id !== id);
   if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   renderPendentes();
@@ -439,23 +459,19 @@ export async function delPend(id) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// initCampoMobile — Experiência especial da aba Campo no celular
-// Chamado automaticamente em populateCampoFrotas (primeira vez)
+// initCampoMobile — Experiência mobile (mantido igual)
 // ═══════════════════════════════════════════════════════════════
 let _campoMobileReady = false;
 
 export function initCampoMobile() {
-  // Só inicializa uma vez e somente em dispositivos mobile
   if (_campoMobileReady) return;
   _campoMobileReady = true;
 
   const campoSection = el('tab-campo');
   if (!campoSection) return;
 
-  // ── Sequência fixa de campos para navegação por Enter/Next ───
   const FIELD_ORDER = ['cData', 'cFrota', 'cCodOp', 'cTurno', 'cSub', 'cHoras', 'cHaDia', 'cMotivo', 'cAcao'];
 
-  // Retorna a sequência atual levando em conta campos ocultos (ex: cSub)
   function getVisibleSequence() {
     return FIELD_ORDER.filter(id => {
       const e = el(id);
@@ -465,25 +481,22 @@ export function initCampoMobile() {
     });
   }
 
-  // Foca no próximo campo da sequência
   function focusNext(fromIdOrEl) {
-    const seq   = getVisibleSequence();
+    const seq = getVisibleSequence();
     const extras = Array.from(document.querySelectorAll('.c-extra-in'));
 
-    // Monta sequência completa: campos fixos + extras entre cHaDia e cMotivo
     const haDiaIdx = seq.indexOf('cHaDia');
     const full = [
       ...seq.slice(0, haDiaIdx + 1),
-      ...extras,                           // inputs dinâmicos
+      ...extras,
       ...seq.slice(haDiaIdx + 1)
     ];
 
-    // Descobre índice atual
     let idx;
     if (typeof fromIdOrEl === 'string') {
       idx = full.indexOf(fromIdOrEl);
     } else {
-      idx = full.indexOf(fromIdOrEl);      // elemento DOM dos extras
+      idx = full.indexOf(fromIdOrEl);
     }
 
     if (idx === -1 || idx >= full.length - 1) return;
@@ -494,7 +507,6 @@ export function initCampoMobile() {
       const target = el(next);
       if (!target) return;
       target.focus();
-      // Rola suavemente para o campo com margem de cabeçalho
       setTimeout(() => {
         const rect = target.getBoundingClientRect();
         if (rect.top < 80 || rect.bottom > window.innerHeight - 80) {
@@ -512,19 +524,13 @@ export function initCampoMobile() {
     }
   }
 
-  // ── Efeito zoom/ênfase no campo com foco ────────────────────
   campoSection.addEventListener('focusin', (e) => {
     const inp = e.target;
     if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(inp.tagName)) return;
-
-    // Remove ênfase anterior
     campoSection.querySelectorAll('.fg.campo-focused').forEach(fg => fg.classList.remove('campo-focused'));
-
-    // Adiciona ênfase no .fg pai
     const fg = inp.closest('.fg');
     if (fg) {
       fg.classList.add('campo-focused');
-      // Rola para o campo se estiver fora da área visível
       setTimeout(() => {
         const rect = fg.getBoundingClientRect();
         if (rect.top < 80 || rect.bottom > window.innerHeight - 100) {
@@ -534,7 +540,6 @@ export function initCampoMobile() {
     }
   }, true);
 
-  // Remove ênfase ao sair do campo
   campoSection.addEventListener('focusout', (e) => {
     const fg = e.target.closest('.fg');
     if (!fg) return;
@@ -545,13 +550,11 @@ export function initCampoMobile() {
     }, 150);
   }, true);
 
-  // ── Navegação por Enter / Next no teclado ───────────────────
   campoSection.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     const t = e.target;
 
     if (t.tagName === 'TEXTAREA') {
-      // Shift+Enter = quebra de linha normal; Enter simples = próximo campo
       if (e.shiftKey) return;
       e.preventDefault();
       focusNext(t.id);
@@ -561,7 +564,7 @@ export function initCampoMobile() {
     if (t.tagName === 'INPUT') {
       e.preventDefault();
       if (t.classList.contains('c-extra-in')) {
-        focusNext(t);    // elemento DOM para extras dinâmicos
+        focusNext(t);
       } else {
         focusNext(t.id);
       }
@@ -574,23 +577,17 @@ export function initCampoMobile() {
     }
   });
 
-  // ── Auto-avanço após selecionar dropdown (só em touch) ──────
-  // Além de avançar, garante que o rascunho seja salvo ao mudar selects
-  // em dispositivos touch onde o evento de 'input' pode ser inconsistente.
   if ('ontouchstart' in window) {
     const mobileSelects = ['cData', 'cFrota', 'cCodOp', 'cTurno', 'cSub'];
     mobileSelects.forEach(id => {
       const e = el(id);
       if (!e) return;
       e.addEventListener('change', () => {
-        // Aguarda os onchange originais (HT.onFrotaChange etc.) terminarem
-        // Aumentado para 450ms para garantir que o DOM mobile atualizou
         setTimeout(() => focusNext(id), 450);
       });
     });
   }
 
-  // ── Indicador de progresso do formulário (mobile) ───────────
   _atualizarProgressoCampo();
   
   const updateAll = () => {
@@ -602,7 +599,6 @@ export function initCampoMobile() {
   campoSection.addEventListener('input', updateAll);
 }
 
-// Barra de progresso visual do formulário no mobile
 function _atualizarProgressoCampo() {
   const indicator = el('campoProgressBar');
   if (!indicator) return;
@@ -616,9 +612,9 @@ function _atualizarProgressoCampo() {
     { id: 'cHaDia',  fn: v => parseFloat(v) > 0 },
   ];
 
-  const total     = campos.length;
+  const total = campos.length;
   const preenchidos = campos.filter(c => c.fn(gv(c.id))).length;
-  const pct       = Math.round((preenchidos / total) * 100);
+  const pct = Math.round((preenchidos / total) * 100);
 
   indicator.style.width = pct + '%';
   indicator.style.background = pct === 100
