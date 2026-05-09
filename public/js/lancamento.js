@@ -710,5 +710,7 @@ function _atualizarProgressoCampo() {
 
   const filled = campos.filter(c => c.fn(gv(c.id))).length;
   const pct = (filled / campos.length) * 100;
-  indicator.style.width = `${pct}%`;
+  if (indicator) {
+    indicator.style.width = `${pct}%`;
+  }
 }
