@@ -35,10 +35,13 @@ export function renderTabs() {
 }
 
 // ── Ativa uma aba ─────────────────────────────────────────────
-export function activateTab(tabId) {
+// silent=true: usado no boot para restaurar a aba salva sem
+// sobrescrever a preferência no Firestore com o valor de arranque.
+export function activateTab(tabId, silent = false) {
   S.activeTab = tabId;
-  // Persiste a aba ativa no Firestore para aparecer igual em qualquer dispositivo
-  saveUserPrefs({ activeTab: tabId });
+  // Persiste a aba ativa no Firestore — apenas quando o usuário muda
+  // explicitamente (silent=false), nunca durante a inicialização.
+  if (!silent) saveUserPrefs({ activeTab: tabId });
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
   el('tabsNav')?.classList.remove('mobile-open');
   if (el('mobileNavBtn')) el('mobileNavBtn').innerHTML = '<i class="fas fa-bars"></i>';
@@ -47,8 +50,8 @@ export function activateTab(tabId) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   if (teamMap[tabId]) {
     S.hbEquipe = teamMap[tabId];
-    // Persiste equipe da tabela consolidada
-    saveUserPrefs({ hbEquipe: S.hbEquipe });
+    // Persiste equipe da tabela consolidada (apenas clique do usuário)
+    if (!silent) saveUserPrefs({ hbEquipe: S.hbEquipe });
     const pane = el('tab-equipe');
     if (pane) { pane.classList.add('active'); renderHerbtratosTable(); }
   } else {

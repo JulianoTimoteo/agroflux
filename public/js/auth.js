@@ -35,8 +35,17 @@ export function showApp() {
   txt('ubName', s?.Nome || 'AgroFlux');
   txt('ubRole', `${s?.Nivel || 'operador'} · Usina Pitangueiras`);
   renderTabs(); refreshAll();
-  const firstBtn = el('tabsNav')?.querySelector('.tab-btn');
-  if (firstBtn) activateTab(firstBtn.dataset.tab);
+
+  // Restaura a aba salva (cross-device) ou usa a primeira disponível.
+  // Usa o flag silent=true para NÃO sobrescrever a preferência no Firestore
+  // durante o boot — só o clique do usuário deve disparar o save.
+  const savedTab  = S.activeTab;
+  const firstBtn  = el('tabsNav')?.querySelector('.tab-btn');
+  const targetTab = (savedTab && el('tabsNav')?.querySelector(`[data-tab="${savedTab}"]`))
+    ? savedTab
+    : firstBtn?.dataset.tab;
+  if (targetTab) activateTab(targetTab, true);
+
   syncUI('ok', 'Conectado');
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
     if (el('pwaBtn')) el('pwaBtn').style.display = 'none';
