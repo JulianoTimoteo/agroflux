@@ -1,59 +1,121 @@
 // ═══════════════════════════════════════════════════════════════
-// state.js — Estado global, cache localStorage, constantes
+// state.js — Estado global, cache localStorage (APENAS LEITURA)
 // ═══════════════════════════════════════════════════════════════
-// Tudo que precisa ser compartilhado entre módulos vive aqui:
-//   - S       : estado runtime (sessão, dados carregados, paginação...)
-//   - LS      : helper de localStorage com prefixo 'ht_'
-//   - Defaults: arrays-semente para popular o Firestore na primeira
-//               vez que um master cria a conta.
+// 
+// ARQUITETURA SIMPLIFICADA (estilo OS CAMPO):
+// 
+//   🔥 FIRESTORE = ÚNICA FONTE DE VERDADE
+//   💾 localStorage = APENAS CACHE DE LEITURA (para offline)
+//   
+//   REGRAS:
+//     1. ONLINE  → tudo lido do Firestore via onSnapshot
+//     2. OFFLINE → lê do cache local (última versão conhecida)
+//     3. Escrita → SEMPRE direto no Firestore (se online)
+//     4. Sem fila offline complexa → se offline, mostra erro ao salvar
+//     5. onSnapshot garante cross-device em tempo real
 // ═══════════════════════════════════════════════════════════════
 
-export const APP_VERSION = "4.3.1";
-export const PP = 20;
+export const APP_VERSION = "4.5.0";
+export const PP = 20;  // Itens por página
 export const SALT = "AgroFlux_Salt_2026";
 
-// ── Estado global em memória ──────────────────────────────────
+// ── Estado global em memória (atualizado pelos listeners) ─────
 export const S = {
   APP_VERSION,
-  session:      null,
+  session: null,              // Usuário logado { uid, Nome, Nivel, Equipes, ... }
+  
+  // Dados principais (vêm do Firestore via onSnapshot)
   equipamentos: [],
-  rendimentos:  [],
-  planoHoras:   [],
+  rendimentos: [],
+  planoHoras: [],
   operacoesAgricolas: [],
-  teamConfigs:  {},
+  teamConfigs: {},
   teamMetadata: [],
-  realizados:   {},
-  pendentes:    [],
-  usuarios:     [],
-  metaPlan:     0,
-  editIdx:      { frota: null, rend: null, plano: null, us: null, ops: null, selectedOps: [], originalOps: [] },
-  pages:        { frota: 1, us: 1, pend: 1 },
-  dashEquipe:   'Tratos',
-  hbEquipe:     'Tratos',
-  activeTab:    'dashboard',
-  confirmRes:   null,
-  charts:       {},
-  campoEquipe:  '',
-  listeners:    [],
-  dashDate:     '',
+  
+  // Lançamentos (vêm do Firestore via onSnapshot)
+  realizados: {},     // Chave: `${codOp}|${modelo}|${frota}`
+  pendentes: [],      // AGORA: apenas cache visual (NÃO é fila)
+  usuarios: [],       // Lista de usuários (admin apenas)
+  
+  // UI State
+  metaPlan: 0,
+  editIdx: { frota: null, rend: null, plano: null, us: null, ops: null, selectedOps: [], originalOps: [] },
+  pages: { frota: 1, us: 1, pend: 1 },
+  dashEquipe: 'Tratos',
+  hbEquipe: 'Tratos',
+  activeTab: 'dashboard',
+  confirmRes: null,
+  charts: {},
+  campoEquipe: '',
+  listeners: [],      // Array de funções de unsubscribe
+  dashDate: '',
+  
+  // Flag para controle de primeiro carregamento
+  _initialLoadDone: false
 };
 
-// ── localStorage helper (com prefixo 'ht_') ───────────────────
+// ── localStorage helper (APENAS PARA CACHE DE LEITURA) ─────────
 export const LS = {
-  get(k, d = null) { try { const v = localStorage.getItem('ht_' + k); return v !== null ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem('ht_' + k, JSON.stringify(v)); } catch(e) { console.warn('[LS]', e); } },
-  rm(k) { localStorage.removeItem('ht_' + k); }
+  get(k, d = null) { 
+    try { 
+      const v = localStorage.getItem('ht_' + k); 
+      return v !== null ? JSON.parse(v) : d; 
+    } catch { 
+      return d; 
+    } 
+  },
+  set(k, v) { 
+    try { 
+      localStorage.setItem('ht_' + k, JSON.stringify(v)); 
+    } catch(e) { 
+      console.warn('[LS] Erro ao salvar cache:', e); 
+    } 
+  },
+  rm(k) { 
+    localStorage.removeItem('ht_' + k); 
+  },
+  
+  // Limpa todo o cache do usuário atual
+  clearUserCache(uid) {
+    if (!uid) return;
+    const keys = [
+      `realizados_${uid}`,
+      `pendentes_${uid}`,
+      `prefs_${uid}`,
+      `draft_campo_${uid}`
+    ];
+    keys.forEach(k => this.rm(k));
+  }
 };
 
 // ── Ícones de equipes (FontAwesome) ───────────────────────────
 export const TEAM_ICONS = {
-  'Tratos': 'leaf', 'Herbicida': 'spray-can', 'Fertirrigação': 'water',
-  'Preparo': 'tractor', 'Biomassa': 'seedling', 'Linha Amarela': 'truck-front'
+  'Tratos': 'leaf',
+  'Herbicida': 'spray-can',
+  'Fertirrigação': 'water',
+  'Preparo': 'tractor',
+  'Biomassa': 'seedling',
+  'Linha Amarela': 'truck-front'
 };
+
+// ── Obtém a lista de equipes únicas dos equipamentos ─────────
+export function getUniqueTeamsFromEquipamentos() {
+  const teams = new Set();
+  S.equipamentos.forEach(eq => {
+    if (eq.Equipe) teams.add(eq.Equipe);
+    const ops = eq.operacoesPermitidas || [];
+    ops.forEach(opCod => {
+      const op = S.operacoesAgricolas.find(o => String(o.CodOperacao) === String(opCod));
+      if (op && op.Equipe) teams.add(op.Equipe);
+    });
+  });
+  return Array.from(teams).sort();
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Dados padrão (sementes para o Firestore na criação inicial)
 // ═══════════════════════════════════════════════════════════════
+
 export const OPERACOES_AGRICOLAS = [
   {CodOperacao:"13",  Descricao:"CORTE MANUAL DE CANA QUEIMADA",       Equipe:"Tratos",        Total:1.0},
   {CodOperacao:"15",  Descricao:"DISTRIBUIÇÃO DE CANA/SULCO",           Equipe:"Tratos",        Total:1.0},
@@ -185,3 +247,21 @@ export const DEFAULT_PLANO_HORAS = [
   {CdOperacao:"1020",DeOperacao:"QUEBRA LOMBO",             Turnos:"1",HorasBase:4.12},
   {CdOperacao:"1095",DeOperacao:"MATURADOR DRONE",             Turnos:"1",HorasBase:8.0},
 ];
+
+// ═══════════════════════════════════════════════════════════════
+// FUNÇÕES AUXILIARES (para manter compatibilidade)
+// ═══════════════════════════════════════════════════════════════
+
+// Normaliza texto (remove acentos, espaços, minúsculo)
+export function norm(str) {
+  if (!str) return '';
+  return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().trim().replace(/\s+/g, '');
+}
+
+// Helper para debugar (opcional)
+export const log = (msg, data) => {
+  if (S.session?.Nivel === 'master') {
+    console.log(`[AgroFlux] ${msg}`, data || '');
+  }
+};
