@@ -32,22 +32,20 @@ export async function loadFromFirestore(customDate = null) {
   syncUI('warn', 'Sincronizando...');
   detachListeners();
 
-  // ── CORREÇÃO: restaura pendentes e realizados do cache local ──
-  // S.pendentes inicia como [] a cada boot; sem isso os registros
-  // salvos antes de sincronizar somem ao recarregar a página ou
-  // ao re-autenticar.
+  // ── Restaura pendentes offline do cache local ─────────────────
+  // S.pendentes inicia como [] a cada boot; sem isso registros
+  // salvos offline (sem conexão) somem ao recarregar a página.
+  // S.realizados NAO e restaurado do localStorage — o Firestore e
+  // a unica fonte de verdade, evitando dados velhos/divergentes
+  // entre dispositivos.
   const uid = S.session?.uid;
   if (uid) {
     const storedPend = LS.get('pendentes_' + uid);
     if (Array.isArray(storedPend) && storedPend.length > 0) {
       S.pendentes = storedPend;
     }
-    // Realizado local serve de cache enquanto o Firestore não responde
-    const storedReal = LS.get('realizados_' + uid);
-    if (storedReal && typeof storedReal === 'object') {
-      S.realizados = { ...storedReal };
-    }
   }
+  S.realizados = {}; // Limpa para receber dados frescos do Firestore
   // ─────────────────────────────────────────────────────────────
 
   try {
@@ -111,7 +109,13 @@ export async function loadTodayRecords(customDate = null) {
             extrasPlan: r.extrasPlan || {}
           };
         });
-        S.realizados = { ...S.realizados, ...batchReal };
+        // Remove registros antigos DESTA colecao antes de inserir os novos.
+        // Isso garante que dados deletados no Firestore saiam da UI,
+        // e que cada dispositivo veja exatamente o mesmo estado do servidor.
+        Object.keys(S.realizados).forEach(k => {
+          if (S.realizados[k]?.col === col) delete S.realizados[k];
+        });
+        Object.assign(S.realizados, batchReal);
         const uid = S.session?.uid;
         if (uid) LS.set('realizados_' + uid, S.realizados);
         refreshAll();
