@@ -225,11 +225,13 @@ export function subscribePendentes(uid, onUpdate) {
         const cloudItems = snap.docs.map(d => d.data());
         const cloudIds = new Set(cloudItems.map(p => String(p.id)));
         
-        // A "Única Verdade" é o Firestore. 
-        // Pegamos o que está na nuvem e somamos apenas o que está na fila offline LOCAL.
+        // REGRA OS-CAMPO: O Firestore é a única fonte de verdade.
+        // Itens locais só aparecem se estiverem na fila para subir (offline).
         const offlineQueueIds = LS.get('pend_offline_' + uid, []);
         let localOnly = [];
         
+        // Se houver itens que foram salvos sem internet, mesclamos eles
+        // para que o usuário não ache que perdeu o dado.
         if (offlineQueueIds.length > 0) {
           const local = LS.get('pendentes_' + uid, []);
           localOnly = local.filter(p => 
