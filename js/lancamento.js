@@ -262,33 +262,52 @@ export function clearCampoDraft() {
   if (uid) LS.rm('draft_campo_' + uid);
 }
 
-// ── LIMPAR CACHE LOCAL (pendentes antigos) ────────────────────
+// ── LIMPAR CACHE LOCAL COMPLETO (Força bruta) ─────────────────
 export function limparCacheLocal() {
+  console.log('[Cache] Iniciando limpeza completa...');
+  
   const uid = auth.currentUser?.uid;
-  if (!uid) {
-    toast('Nenhum usuário logado.', 'w');
-    return;
+  
+  // 1. Limpa TODAS as chaves do localStorage relacionadas
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('ht_') || key.includes('firebase'))) {
+      keysToRemove.push(key);
+    }
   }
+  keysToRemove.forEach(key => {
+    console.log('[Cache] Removendo:', key);
+    localStorage.removeItem(key);
+  });
   
-  // Limpa pendentes e realizados do localStorage
-  LS.rm('pendentes_' + uid);
-  LS.rm('realizados_' + uid);
-  
-  // Limpa os arrays globais
+  // 2. Limpa arrays globais
   S.pendentes = [];
   S.realizados = {};
   
-  // Re-renderiza a tabela
+  // 3. Se tiver UID, garante que as chaves específicas foram removidas
+  if (uid) {
+    LS.rm('pendentes_' + uid);
+    LS.rm('realizados_' + uid);
+    LS.rm('prefs_' + uid);
+    LS.rm('draft_campo_' + uid);
+    LS.rm('campoEquipe_' + uid);
+  }
+  
+  // 4. Recarrega os dados do Firestore
+  import('./realtime.js').then(({ loadFromFirestore }) => {
+    loadFromFirestore();
+  });
+  
+  // 5. Re-renderiza
   renderPendentes();
   
-  toast('Cache local limpo! Apenas dados do Firestore serão exibidos.', 's');
+  toast('✅ Cache completamente limpo! Recarregando dados do servidor...', 's');
   
-  // Opcional: recarrega os dados do Firestore
+  // 6. Recarrega a página após 1 segundo
   setTimeout(() => {
-    import('./realtime.js').then(({ loadFromFirestore }) => {
-      loadFromFirestore();
-    });
-  }, 500);
+    location.reload();
+  }, 1000);
 }
 
 function _validarFormCampo() {
@@ -400,7 +419,17 @@ export async function salvarCampo() {
 // ═══════════════════════════════════════════════════════════════
 
 export function renderPendentes() {
-  // Filtra apenas registros que NÃO estão no Firestore
+  // 🔥 CRÍTICO: Sincroniza S.pendentes com localStorage para evitar dessincronia
+  const uid = auth.currentUser?.uid;
+  if (uid) {
+    const storedPend = LS.get('pendentes_' + uid);
+    if (JSON.stringify(storedPend) !== JSON.stringify(S.pendentes)) {
+      console.log('[Pendentes] Sincronizando com localStorage');
+      S.pendentes = Array.isArray(storedPend) ? storedPend : [];
+    }
+  }
+  
+  // 🔥 Filtra apenas registros que NÃO estão no Firestore
   const filtered = S.pendentes.filter(r => {
     const op = getOperacaoAgricola(r.codOperacao);
     if (!op) return false;
@@ -437,7 +466,7 @@ export function renderPendentes() {
   } else {
     tbody.innerHTML = page.map(r =>
       `<tr>
-        <td data-label="Selecionar"><input type="checkbox" class="pend-check" data-id="${r.id}"></table>
+        <td data-label="Selecionar"><input type="checkbox" class="pend-check" data-id="${r.id}"></td>
         <td data-label="Cód." class="mono">${r.codOperacao}</td>
         <td data-label="Operação" class="td-l">${tc(r.descricao)}</td>
         <td data-label="Frota">${r.frota}</td>
@@ -463,7 +492,7 @@ export function toggleSelPend(v) {
 }
 
 export function editarPend(id) {
-  const idx = S.pendentes.findIndex(p => p.id === id);
+  const idx = S.pendentes.findIndex(p => String(p.id) === String(id));
   if (idx === -1) return;
   const r = S.pendentes[idx];
   setCampoEquipe(getOperacaoAgricola(r.codOperacao)?.Equipe || S.campoEquipe);
@@ -491,7 +520,7 @@ export function pagPend(d) {
 
 export async function delPend(id) {
   if (!(await customConfirm('Excluir', 'Deseja excluir este registro local?'))) return;
-  S.pendentes = S.pendentes.filter(p => p.id !== id);
+  S.pendentes = S.pendentes.filter(p => String(p.id) !== String(id));
   if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   renderPendentes();
   toast('Registro local removido.', 'w');
