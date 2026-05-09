@@ -9,6 +9,7 @@ import {
   getUniqueTeams, loading, toast
 } from './utils.js';
 import { loadFromFirestore } from './realtime.js';
+import { saveUserPrefs } from './preferences.js';
 
 // ── Render principal ──────────────────────────────────────────
 export function renderDash() {
@@ -43,7 +44,7 @@ export function renderDash() {
     </button>
   `).join('');
   dashTabsContainer.querySelectorAll('.dtab').forEach(btn => {
-    btn.onclick = () => { S.dashEquipe = btn.dataset.equipe; renderDash(); };
+    btn.onclick = () => { S.dashEquipe = btn.dataset.equipe; saveUserPrefs({ dashEquipe: S.dashEquipe }); renderDash(); };
   });
   const equips = S.equipamentos.filter(e => {
     if (norm(e.Equipe) === norm(S.dashEquipe)) return true;

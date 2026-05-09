@@ -23,6 +23,7 @@ import {
 import { renderTabs, activateTab } from './navigation.js';
 import { refreshAll } from './refresh.js';
 import { restoreCampoDraft } from './lancamento.js';
+import { loadUserPrefs } from './preferences.js';
 
 // ── Telas: app, login, setup ──────────────────────────────────
 export function showApp() {
@@ -147,6 +148,49 @@ async function loadUserProfile(firebaseUser) {
     S.usuarios     = LS.get('usuarios',     []);
     S.campoEquipe  = LS.get('campoEquipe_' + uid,  '');
     if (!S.campoEquipe && profile.Equipes?.length) S.campoEquipe = profile.Equipes[0];
+
+    // ── Carrega preferências cross-device do Firestore ────────
+    // Recupera estado que o usuário deixou em qualquer dispositivo:
+    // aba ativa, equipe selecionada, pendentes e rascunho do campo.
+    try {
+      const prefs = await loadUserPrefs(uid);
+
+      // Aba ativa salva na última sessão
+      if (prefs.activeTab) S.activeTab = prefs.activeTab;
+
+      // Equipe do Campo — Firestore sobrepõe localStorage se existir
+      if (prefs.campoEquipe) {
+        S.campoEquipe = prefs.campoEquipe;
+        LS.set('campoEquipe_' + uid, prefs.campoEquipe);
+      } else if (!S.campoEquipe && profile.Equipes?.length) {
+        S.campoEquipe = profile.Equipes[0];
+      }
+
+      // Equipes do Dashboard e tabela consolidada
+      if (prefs.dashEquipe) S.dashEquipe = prefs.dashEquipe;
+      if (prefs.hbEquipe)   S.hbEquipe   = prefs.hbEquipe;
+
+      // Pendentes: merge Firestore + localStorage (sem duplicar)
+      // Prioridade: se o Firestore tem registros que o localStorage não tem,
+      // incorpora (útil ao logar num novo dispositivo).
+      if (Array.isArray(prefs.pendentes) && prefs.pendentes.length > 0) {
+        const localPend = S.pendentes;
+        const localIds  = new Set(localPend.map(p => String(p.id)));
+        const remotePend = prefs.pendentes.filter(p => !localIds.has(String(p.id)));
+        if (remotePend.length > 0) {
+          S.pendentes = [...localPend, ...remotePend];
+          LS.set('pendentes_' + uid, S.pendentes);
+        }
+      }
+
+      // Rascunho do Campo — restaura do Firestore se não houver local
+      if (prefs.campoDraft && !LS.get('draft_campo_' + uid)) {
+        LS.set('draft_campo_' + uid, prefs.campoDraft);
+      }
+    } catch (e) {
+      console.warn('[Auth] Falha ao carregar preferências — usando defaults', e);
+    }
+    // ─────────────────────────────────────────────────────────
 
     // Garante que pendentes apareçam na tabela antes da sincronização
     S.pendentes.forEach(p => {

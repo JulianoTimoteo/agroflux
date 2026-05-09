@@ -9,6 +9,7 @@ import { populateCampoFrotas } from './lancamento.js';
 import { renderFrotas, renderOps } from './admin.js';
 import { renderUsuarios } from './usuarios.js';
 import { renderDash } from './dashboard.js';
+import { saveUserPrefs } from './preferences.js';
 
 // ── Render do menu de abas (responde a permissões) ────────────
 export function renderTabs() {
@@ -36,6 +37,8 @@ export function renderTabs() {
 // ── Ativa uma aba ─────────────────────────────────────────────
 export function activateTab(tabId) {
   S.activeTab = tabId;
+  // Persiste a aba ativa no Firestore para aparecer igual em qualquer dispositivo
+  saveUserPrefs({ activeTab: tabId });
   document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
   el('tabsNav')?.classList.remove('mobile-open');
   if (el('mobileNavBtn')) el('mobileNavBtn').innerHTML = '<i class="fas fa-bars"></i>';
@@ -44,6 +47,8 @@ export function activateTab(tabId) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   if (teamMap[tabId]) {
     S.hbEquipe = teamMap[tabId];
+    // Persiste equipe da tabela consolidada
+    saveUserPrefs({ hbEquipe: S.hbEquipe });
     const pane = el('tab-equipe');
     if (pane) { pane.classList.add('active'); renderHerbtratosTable(); }
   } else {

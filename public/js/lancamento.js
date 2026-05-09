@@ -18,6 +18,7 @@ import {
   loading, getCollectionForOperation
 } from './utils.js';
 import { refreshAll } from './refresh.js';
+import { saveUserPrefs, savePendentesCloud, saveDraftCloud, clearDraftCloud } from './preferences.js';
 
 // ── Tabs de equipe e seleção de frota ─────────────────────────
 export function populateCampoFrotas() {
@@ -71,6 +72,8 @@ export function populateCampoFrotas() {
 export function setCampoEquipe(team) {
   S.campoEquipe = team;
   if (auth.currentUser) LS.set('campoEquipe_' + auth.currentUser.uid, team);
+  // Persiste no Firestore para aparecer em qualquer dispositivo
+  saveUserPrefs({ campoEquipe: team });
   S.pages.pend = 1;
   populateCampoFrotas();
   renderPendentes();
@@ -220,6 +223,8 @@ export function saveCampoDraft() {
   };
   document.querySelectorAll('.c-extra-in').forEach(i => { draft.extras[i.dataset.id] = i.value; });
   LS.set('draft_campo_' + uid, draft);
+  // Persiste rascunho no Firestore (aparece em qualquer dispositivo)
+  saveDraftCloud(draft, uid);
 }
 
 export function restoreCampoDraft() {
@@ -254,7 +259,11 @@ export function restoreCampoDraft() {
 
 export function clearCampoDraft() {
   const uid = auth.currentUser?.uid;
-  if (uid) LS.rm('draft_campo_' + uid);
+  if (uid) {
+    LS.rm('draft_campo_' + uid);
+    // Remove também do Firestore
+    clearDraftCloud(uid);
+  }
 }
 
 function _validarFormCampo() {
@@ -384,6 +393,8 @@ export async function salvarCampo() {
   if (uid) {
     LS.set('realizados_' + uid, S.realizados);
     LS.set('pendentes_'  + uid, S.pendentes);
+    // Replica pendentes no Firestore para acesso cross-device
+    savePendentesCloud(S.pendentes, uid);
   }
 
   clearCampoDraft();
@@ -485,7 +496,10 @@ export function editarPend(id) {
 
   // 5. Remover da lista de pendentes e atualizar interface
   S.pendentes.splice(idx, 1);
-  if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
+  if (auth.currentUser) {
+    LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
+    savePendentesCloud(S.pendentes, auth.currentUser.uid);
+  }
   renderPendentes();
   
   toast('Registro carregado para edição.', 's');
@@ -500,7 +514,10 @@ export function pagPend(d) {
 export async function delPend(id) {
   if (!(await customConfirm('Excluir', 'Deseja excluir este registro pendente?'))) return;
   S.pendentes = S.pendentes.filter(p => p.id !== id);
-  if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
+  if (auth.currentUser) {
+    LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
+    savePendentesCloud(S.pendentes, auth.currentUser.uid);
+  }
   renderPendentes();
   toast('Removido.', 'w');
 }

@@ -12,6 +12,7 @@ import {
   norm, todayBR, tc, getOperacaoAgricola, getCollectionForOperation
 } from './utils.js';
 import { refreshAll } from './refresh.js';
+import { savePendentesCloud } from './preferences.js';
 
 // ── Detach listeners ativos antes de re-anexar ────────────────
 export function detachListeners() {
@@ -218,6 +219,8 @@ export async function sincronizarCampo() {
     // CORREÇÃO: persiste os pendentes restantes no LS com chave por UID
     const uid = S.session?.uid || 'anon';
     LS.set('pendentes_' + uid, S.pendentes);
+    // Replica no Firestore para aparecer em qualquer dispositivo
+    await savePendentesCloud(S.pendentes, S.session?.uid);
 
     toast('Sincronização concluída!', 's');
     playSuccessSound();

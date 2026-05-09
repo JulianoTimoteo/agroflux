@@ -104,6 +104,12 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
+    // ── Preferências de usuário (cross-device state) ─────────
+    // Cada usuário lê e escreve apenas seu próprio documento.
+    match /user_preferences/{uid} {
+      allow read, write: if isAuth() && request.auth.uid == uid;
+    }
+
     // ── Dashboards (futuro) ──────────────────────────────────
     match /dashboards/{docId} {
       allow read:  if isAuth() && isActive();
