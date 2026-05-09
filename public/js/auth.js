@@ -23,7 +23,9 @@ import {
 import { renderTabs, activateTab } from './navigation.js';
 import { refreshAll } from './refresh.js';
 import { restoreCampoDraft } from './lancamento.js';
-import { loadUserPrefs } from './preferences.js';
+import {
+  loadUserPrefs, loadAllPendentesCloud, subscribePendentes, flushOfflinePendentes
+} from './preferences.js';
 
 // ── Telas: app, login, setup ──────────────────────────────────
 export function showApp() {
@@ -158,18 +160,13 @@ async function loadUserProfile(firebaseUser) {
     S.campoEquipe  = LS.get('campoEquipe_' + uid,  '');
     if (!S.campoEquipe && profile.Equipes?.length) S.campoEquipe = profile.Equipes[0];
 
-    // ── Sincronização bidirecional de estado cross-device ─────
-    // Combina localStorage (este dispositivo) com Firestore (todos
-    // os dispositivos) em AMBAS as direções: desce dados que faltam
-    // localmente E sobe dados locais que ainda não chegaram ao
-    // Firestore (pendentes criados offline ou antes do deploy).
+    // ── Sincronização cross-device (preferências + pendentes) ─
     try {
+      // 1. Preferências simples (aba, equipe, rascunho)
       const prefs = await loadUserPrefs(uid);
 
-      // ── Aba ativa ──────────────────────────────────────────
       if (prefs.activeTab) S.activeTab = prefs.activeTab;
 
-      // ── Equipes ────────────────────────────────────────────
       if (prefs.campoEquipe) {
         S.campoEquipe = prefs.campoEquipe;
         LS.set('campoEquipe_' + uid, prefs.campoEquipe);
@@ -179,42 +176,38 @@ async function loadUserProfile(firebaseUser) {
       if (prefs.dashEquipe) S.dashEquipe = prefs.dashEquipe;
       if (prefs.hbEquipe)   S.hbEquipe   = prefs.hbEquipe;
 
-      // ── Merge BIDIRECIONAL de pendentes ────────────────────
-      // localPend  = o que está neste dispositivo (localStorage)
-      // cloudPend  = o que está na nuvem (Firestore)
-      // merged     = union sem duplicatas (id como chave)
-      // Se localStorage tinha algo que a nuvem não tinha, sobe.
-      const localPend = S.pendentes;
-      const cloudPend = Array.isArray(prefs.pendentes) ? prefs.pendentes : [];
-      const byId      = new Map();
-      [...cloudPend, ...localPend].forEach(p => byId.set(String(p.id), p));
-      const merged    = Array.from(byId.values());
-
-      if (merged.length > 0) {
-        S.pendentes = merged;
-        LS.set('pendentes_' + uid, merged);
-        // Sobe para a nuvem se localStorage tinha pendentes ausentes dela
-        const cloudIds   = new Set(cloudPend.map(p => String(p.id)));
-        const hasLocalOnly = localPend.some(p => !cloudIds.has(String(p.id)));
-        if (hasLocalOnly) {
-          import('./preferences.js').then(({ savePendentesCloud }) =>
-            savePendentesCloud(merged, uid)
-          );
-        }
-      }
-
-      // ── Rascunho do Campo ──────────────────────────────────
       if (prefs.campoDraft && !LS.get('draft_campo_' + uid)) {
         LS.set('draft_campo_' + uid, prefs.campoDraft);
       }
 
-      // ── Sobe prefs locais ausentes na nuvem ────────────────
       const toSync = {};
       if (!prefs.campoEquipe && S.campoEquipe) toSync.campoEquipe = S.campoEquipe;
       if (!prefs.activeTab   && S.activeTab)   toSync.activeTab   = S.activeTab;
       if (Object.keys(toSync).length > 0) {
         import('./preferences.js').then(({ saveUserPrefs }) => saveUserPrefs(toSync));
       }
+
+      // 2. Pendentes — carrega TODOS da subcoleção (inclui migração de pending_temp)
+      //    e envia offline acumulados
+      const allPend = await loadAllPendentesCloud(uid);
+      if (allPend.length > 0) {
+        S.pendentes = allPend;
+        LS.set('pendentes_' + uid, allPend);
+      }
+
+      // 3. Sobe qualquer pendente offline que ficou na fila
+      flushOfflinePendentes(uid).catch(() => {});
+
+      // 4. Inscreve listener em tempo real — qualquer dispositivo que
+      //    salvar/remover um pendente reflete AQUI imediatamente
+      subscribePendentes(uid, (merged) => {
+        S.pendentes = merged;
+        // Atualiza a tabela de pendentes se a aba Campo estiver visível
+        import('./lancamento.js').then(({ renderPendentes }) => {
+          try { renderPendentes(); } catch (_) {}
+        });
+      });
+
     } catch (e) {
       console.warn('[Auth] Falha ao carregar preferências — usando defaults', e?.code || e);
     }
@@ -275,6 +268,7 @@ export async function logout() {
 
     // Para os listeners antes de deslogar
     detachListeners();
+    import('./preferences.js').then(({ unsubscribePendentes }) => unsubscribePendentes());
     S.session = null;
     S.pendentes = [];
     S.realizados = {};

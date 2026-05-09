@@ -6,7 +6,7 @@
 //   Imagens / fontes → Cache-first    (raramente mudam, vale cachear)
 //   Firebase / APIs  → Nunca intercepta
 
-const CACHE_NAME = 'herbtratos-v9';
+const CACHE_NAME = 'herbtratos-v10';
 
 const STATIC_ASSETS = [
   './',
@@ -16,7 +16,7 @@ const STATIC_ASSETS = [
 
 // ── Install: pré-cacheia apenas o esqueleto mínimo ────────────
 self.addEventListener('install', (event) => {
-  console.log('[SW] Instalando v9...');
+  console.log('[SW] Instalando v10...');
   self.skipWaiting(); // Ativa imediatamente sem esperar abas fecharem
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -25,7 +25,7 @@ self.addEventListener('install', (event) => {
 
 // ── Activate: apaga caches de versões antigas ─────────────────
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Ativando v9...');
+  console.log('[SW] Ativando v10...');
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(

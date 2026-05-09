@@ -12,7 +12,7 @@ import {
   norm, todayBR, tc, getOperacaoAgricola, getCollectionForOperation
 } from './utils.js';
 import { refreshAll } from './refresh.js';
-import { savePendentesCloud } from './preferences.js';
+import { savePendentesCloud, flushOfflinePendentes } from './preferences.js';
 
 // ── Detach listeners ativos antes de re-anexar ────────────────
 export function detachListeners() {
@@ -257,6 +257,14 @@ export function startHourlySync() {
       }
     }, 3600000);
   }, msUntilNextHour);
+
+  // Quando reconectar: sobe pendentes offline e recarrega dados
+  window.addEventListener('online', () => {
+    if (S.session?.uid) {
+      flushOfflinePendentes(S.session.uid).catch(() => {});
+      loadFromFirestore();
+    }
+  });
 }
 
 // ── Sync sob demanda (botão) ──────────────────────────────────

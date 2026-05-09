@@ -33,23 +33,19 @@ service cloud.firestore {
       return isAdmin() || isTeam(team);
     }
 
-    // ⭐ ADICIONADO: Função para permitir qualquer coleção de equipe
-    function canAccessCollection(collectionName) {
-      return isAdmin() || (isActive() && getUser().data.get('Equipe', '') == collectionName);
-    }
-
-    // ⭐ ADICIONADO: Lista de coleções reservadas do sistema
     function isSystemCollection(collectionName) {
-      return collectionName in ['usuarios', 'admin_config', 'dashboards', 'herbicida', 'tratos', 'biomassa', 'preparo', 'linhaamarela', 'fertirrigacao', 'plantio', 'tratosculturais'];
+      return collectionName in ['usuarios', 'admin_config', 'dashboards', 'herbicida', 'tratos',
+        'biomassa', 'preparo', 'linhaamarela', 'fertirrigacao', 'plantio', 'tratosculturais',
+        'user_preferences', 'pendentes_campo', 'pending_temp'];
     }
 
-    // ── Configuração Admin (equipamentos, rendimentos, planoHoras) ──
+    // ── Configuração Admin ────────────────────────────────────
     match /admin_config/{doc} {
       allow get, list: if isActive();
       allow write:     if isAdmin();
     }
 
-    // ── Registros de campo por equipe ────────────────────────
+    // ── Registros de campo por equipe ─────────────────────────
     match /herbicida/{docId} {
       allow get, list, create: if isAuth() && (teamAccess('Herbicida') || teamAccess('herbicida'));
       allow update, delete:    if isAdmin();
@@ -74,8 +70,6 @@ service cloud.firestore {
       allow get, list, create: if isAuth() && (teamAccess('Fertirrigação') || teamAccess('fertirrigacao'));
       allow update, delete:    if isAdmin();
     }
-
-    // ⭐ ADICIONADO: Novas equipes
     match /plantio/{docId} {
       allow get, list, create: if isAuth() && (teamAccess('Plantio') || teamAccess('plantio'));
       allow update, delete:    if isAdmin();
@@ -85,14 +79,14 @@ service cloud.firestore {
       allow update, delete:    if isAdmin();
     }
 
-    // ⭐ ADICIONADO: REGRA DINÂMICA - Aceita QUALQUER nova coleção automaticamente
+    // ── REGRA DINÂMICA: novas equipes futuras ─────────────────
     match /{dynamicCollection}/{docId} {
       allow get, list, create: if !isSystemCollection(dynamicCollection) && (isAdmin() || (isActive() && getUser().data.get('Equipe', '') == dynamicCollection));
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ── Usuários ─────────────────────────────────────────────
+    // ── Usuários ──────────────────────────────────────────────
     match /usuarios/{uid} {
       allow get:    if isAuth() && (request.auth.uid == uid || isAdmin());
       allow list:   if isAdmin();
@@ -104,13 +98,28 @@ service cloud.firestore {
       allow delete: if isMaster();
     }
 
-    // ── Preferências de usuário (cross-device state) ─────────
-    // Cada usuário lê e escreve apenas seu próprio documento.
+    // ── Preferências simples (aba, equipe, rascunho) ──────────
     match /user_preferences/{uid} {
       allow read, write: if isAuth() && request.auth.uid == uid;
     }
 
-    // ── Dashboards (futuro) ──────────────────────────────────
+    // ── Pendentes por documento (subcoleção) ──────────────────
+    // Cada usuário lê/escreve/deleta APENAS seus próprios pendentes.
+    // Admins/master podem ler pendentes de qualquer usuário (suporte).
+    match /pendentes_campo/{uid}/items/{itemId} {
+      allow read:   if isAuth() && (request.auth.uid == uid || isAdmin());
+      allow create, update: if isAuth() && request.auth.uid == uid;
+      allow delete: if isAuth() && (request.auth.uid == uid || isAdmin());
+    }
+
+    // ── Pendentes offline temporários ─────────────────────────
+    // Registros criados sem internet ficam aqui até migrarem para
+    // pendentes_campo quando o dispositivo reconectar.
+    match /pending_temp/{uid}/items/{itemId} {
+      allow read, write, delete: if isAuth() && request.auth.uid == uid;
+    }
+
+    // ── Dashboards (futuro) ───────────────────────────────────
     match /dashboards/{docId} {
       allow read:  if isAuth() && isActive();
       allow write: if isAdmin() && isActive();
