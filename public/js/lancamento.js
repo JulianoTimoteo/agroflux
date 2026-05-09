@@ -447,8 +447,8 @@ export function renderPendentes() {
       <td data-label="Data" style="font-size:.6rem">${r.data||''}</td>
       <td data-label="Status"><span class="badge bdg-pendente">Pendente</span></td>
       <td data-label="Ação">
-        <button class="btn btn-warning btn-xs" onclick="window.HT && HT.editarPend(${r.id})"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-danger btn-xs" onclick="window.HT && HT.delPend(${r.id})"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-warning btn-xs" onclick="window.HT && HT.editarPend('${r.id}')"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-danger btn-xs" onclick="window.HT && HT.delPend('${r.id}')"><i class="fas fa-trash"></i></button>
       </td>
     </tr>`
   ).join('') : `<tr><td colspan="${10 + extraCols.length}" class="empty-row"><i class="fas fa-check-circle" style="color:#4caf50"></i> Nenhum pendente</td></tr>`;

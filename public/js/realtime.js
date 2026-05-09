@@ -179,7 +179,8 @@ export async function saveAdminConfig(type, items) {
 
 // ── Sincroniza pendentes da equipe ativa em Campo ─────────────
 export async function sincronizarCampo() {
-  const selectedIds = Array.from(document.querySelectorAll('.pend-check:checked')).map(cb => Number(cb.dataset.id));
+  // IDs podem ser numéricos (legado) ou strings (novo formato) — sempre compara como String
+  const selectedIds = Array.from(document.querySelectorAll('.pend-check:checked')).map(cb => String(cb.dataset.id));
 
   const teamPendentes = S.pendentes.filter(r => {
     const op = getOperacaoAgricola(r.codOperacao);
@@ -192,7 +193,7 @@ export async function sincronizarCampo() {
   let msg = '';
 
   if (selectedIds.length > 0) {
-    toSync = teamPendentes.filter(r => selectedIds.includes(r.id));
+    toSync = teamPendentes.filter(r => selectedIds.includes(String(r.id)));
     msg = `Sincronizar os ${toSync.length} registros selecionados?`;
   } else {
     toSync = teamPendentes;
@@ -204,16 +205,17 @@ export async function sincronizarCampo() {
 
   if (!navigator.onLine) { toast('Sem conexão com a internet.', 'e'); return; }
   loading(true, `Sincronizando ${toSync.length} registros...`);
+  const uid = S.session?.uid;
   try {
     for (const r of [...toSync]) {
       await _enviarRegistroUnico(r);
-      S.pendentes = S.pendentes.filter(p => p.id !== r.id);
+      // Remove do array local e do Firestore de pendentes
+      S.pendentes = S.pendentes.filter(p => String(p.id) !== String(r.id));
+      const { removePendenteCloud } = await import('./preferences.js');
+      await removePendenteCloud(r.id, uid);
     }
-    // CORREÇÃO: persiste os pendentes restantes no LS com chave por UID
-    const uid = S.session?.uid || 'anon';
-    LS.set('pendentes_' + uid, S.pendentes);
-    // Replica no Firestore para aparecer em qualquer dispositivo
-    await savePendentesCloud(S.pendentes, S.session?.uid);
+    // Persiste os pendentes restantes no localStorage
+    if (uid) LS.set('pendentes_' + uid, S.pendentes);
 
     toast('Sincronização concluída!', 's');
     playSuccessSound();

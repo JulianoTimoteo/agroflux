@@ -169,10 +169,14 @@ export async function loadAllPendentesCloud(uid) {
       try { await deleteDoc(dRef.ref); } catch (_) {}
     }
 
-    // 3. Sobe pendentes locais que ainda não estão na nuvem
-    //    Se o ID já existe na nuvem com dados DIFERENTES, remapeia o ID local
+    // 3. Sobe pendentes locais que ainda não estão na nuvem.
+    //    Cada item é pré-adicionado à fila offline ANTES da tentativa.
+    //    Se o upload falhar, permanece na fila para ser retentado em flushOfflinePendentes.
+    //    Se o upload tiver sucesso, é removido da fila.
     const onlyLocal = local.filter(p => !cloudIds.has(String(p.id)));
     for (const p of onlyLocal) {
+      // Pré-adiciona à fila offline: se falhar abaixo, será retentado
+      _addOfflineQueue(uid, String(p.id));
       let finalP = { ...p };
       try {
         const existingSnap = await getDoc(_pendDoc(uid, p.id)).catch(() => null);
@@ -189,12 +193,19 @@ export async function loadAllPendentesCloud(uid) {
         }
         await setDoc(_pendDoc(uid, finalP.id), { ...finalP, _savedAt: new Date().toISOString() });
         cloud.push(finalP);
-      } catch (_) { cloud.push(finalP); }
+        // Upload OK: remove da fila offline (ID original e remapeado)
+        _removeOfflineQueue(uid, String(p.id));
+        if (finalP.id !== p.id) _removeOfflineQueue(uid, String(finalP.id));
+      } catch (e) {
+        console.warn('[Prefs] Falha ao subir pendente local:', finalP.id, e?.code || e);
+        // Item permanece na fila offline para retry; mostra localmente
+        cloud.push(finalP);
+      }
     }
 
     const merged = cloud;
     LS.set('pendentes_' + uid, merged);
-    LS.set('pend_offline_' + uid, []);
+    // NÃO limpa toda a fila offline aqui — só as bem-sucedidas foram removidas acima.
     return merged;
   } catch (e) {
     console.warn('[Prefs] loadAllPendentesCloud falhou:', e?.code);
@@ -214,10 +225,18 @@ export function subscribePendentes(uid, onUpdate) {
       (snap) => {
         const cloudItems = snap.docs.map(d => d.data());
         const cloudIds = new Set(cloudItems.map(p => String(p.id)));
-        // Mantém pendentes offline locais que ainda não subiram
-        const local = LS.get('pendentes_' + uid, []);
-        const onlyLocal = local.filter(p => !cloudIds.has(String(p.id)));
-        const merged = [...cloudItems, ...onlyLocal];
+
+        // Só adiciona itens que estão na fila offline EXPLÍCITA (criados sem internet)
+        // e que ainda não chegaram ao Firestore.
+        // NÃO mistura com todo o localStorage — isso causava divergência entre browsers.
+        const offlineIds = LS.get('pend_offline_' + uid, []);
+        const onlyOffline = offlineIds.length > 0
+          ? LS.get('pendentes_' + uid, []).filter(
+              p => offlineIds.includes(String(p.id)) && !cloudIds.has(String(p.id))
+            )
+          : [];
+
+        const merged = [...cloudItems, ...onlyOffline];
         S.pendentes = merged;
         LS.set('pendentes_' + uid, merged);
         if (typeof onUpdate === 'function') onUpdate(merged);
