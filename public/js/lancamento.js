@@ -411,7 +411,9 @@ export function renderPendentes() {
   const filtered = S.campoEquipe
     ? S.pendentes.filter(r => {
         const op = getOperacaoAgricola(r.codOperacao);
-        return op && norm(op.Equipe || op.equipe) === norm(S.campoEquipe);
+        // Se o metadado da operação ainda não carregou, não filtramos para evitar esconder dados por erro de sincronismo
+        if (!op) return true;
+        return norm(op.Equipe || op.equipe) === norm(S.campoEquipe);
       })
     : [...S.pendentes];
 
@@ -703,17 +705,10 @@ function _atualizarProgressoCampo() {
     { id: 'cCodOp',  fn: v => !!v },
     { id: 'cTurno',  fn: v => !!v },
     { id: 'cHoras',  fn: v => parseFloat(v) > 0 },
-    { id: 'cHaDia',  fn: v => parseFloat(v) > 0 },
+    { id: 'cHaDia',  fn: v => parseFloat(v) > 0 }
   ];
 
-  const total     = campos.length;
-  const preenchidos = campos.filter(c => c.fn(gv(c.id))).length;
-  const pct       = Math.round((preenchidos / total) * 100);
-
-  indicator.style.width = pct + '%';
-  indicator.style.background = pct === 100
-    ? 'var(--g600)'
-    : pct >= 60
-    ? '#ffa726'
-    : 'var(--b800)';
+  const filled = campos.filter(c => c.fn(gv(c.id))).length;
+  const pct = (filled / campos.length) * 100;
+  indicator.style.width = `${pct}%`;
 }

@@ -26,7 +26,8 @@ service cloud.firestore {
     }
 
     function isTeam(team) {
-      return isActive() && getUser().data.get('Equipe', '') == team;
+      // Normalização para comparação case-insensitive entre o cadastro do usuário e a coleção
+      return isActive() && getUser().data.get('Equipe', '').toLowerCase() == team.toLowerCase();
     }
 
     function teamAccess(team) {
@@ -34,6 +35,7 @@ service cloud.firestore {
     }
 
     function isSystemCollection(collectionName) {
+      // NOTA: Mantenha esta lista atualizada ao adicionar novas coleções de infraestrutura
       return collectionName in ['usuarios', 'admin_config', 'dashboards', 'herbicida', 'tratos',
         'biomassa', 'preparo', 'linhaamarela', 'fertirrigacao', 'plantio', 'tratosculturais',
         'user_preferences', 'pendentes_campo', 'pending_temp'];
@@ -46,42 +48,53 @@ service cloud.firestore {
     }
 
     // ── Registros de campo por equipe ─────────────────────────
+    // Nota: Com a melhoria no isTeam, não é mais necessário checar versões 
+    // minúsculas/maiúsculas manualmente.
+    
     match /herbicida/{docId} {
-      allow get, list, create: if isAuth() && (teamAccess('Herbicida') || teamAccess('herbicida'));
-      allow update, delete:    if isAdmin();
+      allow get, list, create: if isAuth() && teamAccess('herbicida');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
     }
     match /tratos/{docId} {
-      allow get, list, create: if isAuth() && (teamAccess('Tratos') || teamAccess('tratos'));
-      allow update, delete:    if isAdmin();
+      allow get, list, create: if isAuth() && teamAccess('tratos');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
     }
     match /biomassa/{docId} {
-      allow get, list, create: if isAuth() && (teamAccess('Biomassa') || teamAccess('biomassa'));
-      allow update, delete:    if isAdmin();
+      allow get, list, create: if isAuth() && teamAccess('biomassa');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
     }
     match /preparo/{docId} {
-      allow get, list, create: if isAuth() && (teamAccess('Preparo') || teamAccess('preparo'));
-      allow update, delete:    if isAdmin();
+      allow get, list, create: if isAuth() && teamAccess('preparo');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
     }
     match /linhaamarela/{docId} {
-      allow get, list, create: if isAuth() && (teamAccess('Linha Amarela') || teamAccess('linhaamarela'));
-      allow update, delete:    if isAdmin();
+      allow get, list, create: if isAuth() && teamAccess('linhaamarela');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
     }
     match /fertirrigacao/{docId} {
-      allow get, list, create: if isAuth() && (teamAccess('Fertirrigação') || teamAccess('fertirrigacao'));
-      allow update, delete:    if isAdmin();
+      allow get, list, create: if isAuth() && teamAccess('fertirrigacao');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
     }
     match /plantio/{docId} {
-      allow get, list, create: if isAuth() && (teamAccess('Plantio') || teamAccess('plantio'));
-      allow update, delete:    if isAdmin();
+      allow get, list, create: if isAuth() && teamAccess('plantio');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
     }
     match /tratosculturais/{docId} {
-      allow get, list, create: if isAuth() && (teamAccess('Tratos Culturais') || teamAccess('tratosculturais'));
-      allow update, delete:    if isAdmin();
+      allow get, list, create: if isAuth() && teamAccess('tratosculturais');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
     }
 
     // ── REGRA DINÂMICA: novas equipes futuras ─────────────────
     match /{dynamicCollection}/{docId} {
-      allow get, list, create: if !isSystemCollection(dynamicCollection) && (isAdmin() || (isActive() && getUser().data.get('Equipe', '') == dynamicCollection));
+      allow get, list, create: if !isSystemCollection(dynamicCollection) && (isAdmin() || (isActive() && isTeam(dynamicCollection)));
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
