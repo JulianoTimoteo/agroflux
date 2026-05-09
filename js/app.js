@@ -25,7 +25,7 @@ import {
 // ── Realtime (Firestore + sync) ───────────────────────────────
 import {
   startHourlySync, syncNow, detachListeners, updateObs,
-  saveCampoRecord, updateCampoRecord, deleteCampoRecord
+  saveCampoRecord, updateCampoRecord, deleteCampoRecord, loadFromFirestore
 } from './realtime.js';
 
 // ── Navegação ─────────────────────────────────────────────────
@@ -37,7 +37,8 @@ import {
 import {
   populateCampoFrotas, setCampoEquipe, onFrotaChange, onCodChange,
   onTurnoChange, onHorasIn, onHaDiaIn, _verificarMeta, limparCampo,
-  salvarCampo, renderPendentes, toggleSelPend, editarPend, pagPend, delPend
+  salvarCampo, renderPendentes, toggleSelPend, editarPend, pagPend, delPend,
+  limparCacheLocal
 } from './lancamento.js';
 
 // ── Aba "Equipe" / Registros ──────────────────────────────────
@@ -105,6 +106,7 @@ window.HT = {
   populateCampoFrotas, 
   editarPend, 
   toggleSelPend,
+  limparCacheLocal,  // 🔥 NOVA FUNÇÃO para limpar cache local
 
   // Operações agrícolas (form de Campo)
   onOpsSrchChange, 
@@ -215,7 +217,8 @@ window.HT = {
   refreshCurrentTab,
   saveCampoRecord,
   updateCampoRecord,
-  deleteCampoRecord
+  deleteCampoRecord,
+  loadFromFirestore  // 🔥 EXPORTA para recarregar manual se necessário
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -277,10 +280,8 @@ window.addEventListener('online', () => {
   syncUI('ok', 'Online');
   // Tenta recarregar dados quando voltar online
   if (S.session) {
-    import('./realtime.js').then(({ loadFromFirestore }) => {
-      loadFromFirestore();
-      toast('Conectado! Dados atualizados.', 's');
-    });
+    loadFromFirestore();
+    toast('Conectado! Dados atualizados.', 's');
   }
 });
 
@@ -341,3 +342,4 @@ window.addEventListener('beforeunload', (e) => {
 console.log('[AgroFlux] Versão 4.5.0 - Arquitetura OS CAMPO');
 console.log('[AgroFlux] Firestore é a única fonte de verdade');
 console.log('[AgroFlux] Sincronização em tempo real via onSnapshot');
+console.log('[AgroFlux] Para limpar cache local, use: HT.limparCacheLocal()');
