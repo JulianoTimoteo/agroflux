@@ -85,6 +85,30 @@ export const LS = {
       `draft_campo_${uid}`
     ];
     keys.forEach(k => this.rm(k));
+  },
+  
+  // 🔥 NOVA FUNÇÃO: Limpa TODOS os caches do AgroFlux
+  clearAllCaches() {
+    console.log('[LS] Limpando todos os caches do AgroFlux...');
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('ht_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => {
+      console.log('[LS] Removendo:', key);
+      localStorage.removeItem(key);
+    });
+    console.log(`[LS] ${keysToRemove.length} chaves removidas.`);
+    
+    // Limpa também os arrays globais
+    S.pendentes = [];
+    S.realizados = {};
+    S.usuarios = [];
+    
+    return keysToRemove.length;
   }
 };
 
