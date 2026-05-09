@@ -101,24 +101,19 @@ export async function addPendenteCloud(pend, uid) {
         }
       }
       await setDoc(_pendDoc(uid, finalPend.id), { ...finalPend, _savedAt: new Date().toISOString() });
+      
+      // Se online, removemos das filas offline. O onSnapshot (subscribe) cuidará de atualizar a UI.
       _removeOfflineQueue(uid, pend.id);
-      // Se o ID foi remapeado, atualiza localmente
-      if (finalPend.id !== pend.id) {
-        _removeLocalPend(pend.id, uid);
-      }
-      _upsertLocalPend(finalPend, uid);
-      // Sincroniza S.pendentes
-      if (Array.isArray(S.pendentes)) {
-        const idx = S.pendentes.findIndex(p => String(p.id) === String(pend.id));
-        if (idx >= 0) S.pendentes[idx] = finalPend;
-        else if (finalPend.id !== pend.id) S.pendentes.push(finalPend);
-      }
+      _removeOfflineQueue(uid, finalPend.id);
+      if (finalPend.id !== pend.id) _removeLocalPend(pend.id, uid);
+
     } catch (e) {
       console.warn('[Prefs] addPendenteCloud falhou:', e?.code);
       _upsertLocalPend(finalPend, uid);
       _addOfflineQueue(uid, finalPend.id);
     }
   } else {
+    // Caso "Lei": Salva local apenas se estiver offline
     _upsertLocalPend(finalPend, uid);
     _addOfflineQueue(uid, finalPend.id);
   }
@@ -230,21 +225,19 @@ export function subscribePendentes(uid, onUpdate) {
         const cloudItems = snap.docs.map(d => d.data());
         const cloudIds = new Set(cloudItems.map(p => String(p.id)));
         
-        // Identifica itens que foram criados offline NESTE dispositivo
-        // e que ainda não foram sincronizados com o Firestore.
-        // Estes itens devem ser mantidos na lista de pendentes localmente
-        // para que o usuário os veja até que sejam enviados.
+        // A "Única Verdade" é o Firestore. 
+        // Pegamos o que está na nuvem e somamos apenas o que está na fila offline LOCAL.
         const offlineQueueIds = LS.get('pend_offline_' + uid, []);
-        const allLocalPendentes = LS.get('pendentes_' + uid, []); // Todos os pendentes no localStorage
+        let localOnly = [];
+        
+        if (offlineQueueIds.length > 0) {
+          const local = LS.get('pendentes_' + uid, []);
+          localOnly = local.filter(p => 
+            offlineQueueIds.includes(String(p.id)) && !cloudIds.has(String(p.id))
+          );
+        }
 
-        const localOfflineOnly = allLocalPendentes.filter(p =>
-          offlineQueueIds.includes(String(p.id)) && // Está na fila de pendentes offline
-          !cloudIds.has(String(p.id))               // E ainda não está no Firestore
-        );
-
-        // Mescla itens do Firestore com os pendentes offline-only locais.
-        // Esta é a "verdade" para a lista de pendentes exibida na UI.
-        const merged = [...cloudItems, ...localOfflineOnly];
+        const merged = [...cloudItems, ...localOnly];
         S.pendentes = merged;
         LS.set('pendentes_' + uid, merged);
         if (typeof onUpdate === 'function') onUpdate(merged);

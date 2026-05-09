@@ -201,7 +201,20 @@ initAuthObserver();
 
 // ── Service Worker ────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    // Detecta se há uma nova versão do app disponível (CSS/JS novo)
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          // Notifica o usuário para atualizar e ver os cantos arredondados/dados novos
+          if (confirm('Nova versão disponível! Deseja atualizar para aplicar melhorias de layout e sincronização?')) {
+            window.location.reload();
+          }
+        }
+      });
+    });
+  }).catch(err => console.warn('[SW] Falha ao registrar:', err));
 }
 
-console.log('[AgroFlux] Publicado Git - v4.6.2 · Resolução de conflito de mensagens');
+console.log('[AgroFlux] v4.7.0 · Única Verdade: Firebase Temp · Layout: CSS Corrigido');

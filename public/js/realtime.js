@@ -105,7 +105,9 @@ export async function loadTodayRecords(customDate = null) {
             extrasPlan: r.extrasPlan || {}
           };
         });
-        S.realizados = { ...S.realizados, ...batchReal };
+        // Merge inteligente: mantém o que já temos e atualiza/adiciona o que veio da nuvem
+        Object.assign(S.realizados, batchReal);
+        
         const uid = S.session?.uid;
         if (uid) LS.set('realizados_' + uid, S.realizados);
         refreshAll();

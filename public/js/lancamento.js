@@ -357,47 +357,18 @@ export async function salvarCampo() {
 
   const uid = auth.currentUser?.uid;
 
-  if (navigator.onLine && uid) {
-    // ── ONLINE: salva direto no Firestore ─────────────────────────
-    // O onSnapshot dispara em TODOS os dispositivos com o mesmo usuário
-    // automaticamente — sem precisar apertar Sincronizar.
-    loading(true, 'Salvando...');
-    try {
-      const colName = getCollectionForOperation(finalRecord.codOperacao);
-      await addDoc(collection(db, colName), {
-        ...finalRecord,
-        extras:    finalRecord.extras    || {},
-        extrasPlan: finalRecord.extrasPlan || {},
-        operador:  S.session?.Nome       || 'Campo',
-        syncedAt:  new Date().toISOString()
-      });
-      // Se era um pendente offline sendo editado, remove da lista local
-      if (existingPendingIndex !== -1) {
-        S.pendentes.splice(existingPendingIndex, 1);
-      }
-      toast('Registro salvo!', 's');
-    } catch (e) {
-      console.error('[Campo] Erro ao salvar no Firestore, guardando localmente:', e);
-      // Fallback offline: adiciona aos pendentes se ainda não estava
-      if (existingPendingIndex === -1) S.pendentes.push(finalRecord);
-      toast('Salvo offline — sincronize quando conectar.', 'w');
-    } finally {
-      loading(false);
-    }
-  } else {
-    // ── OFFLINE: salva nos pendentes locais ───────────────────────
-    // Será enviado ao Firestore quando o usuário apertar Sincronizar.
-    if (existingPendingIndex === -1) S.pendentes.push(finalRecord);
-    toast('Salvo offline — sincronize quando conectar.', 's');
-  }
-
   if (uid) {
-    // Persiste cada pendente como documento separado no Firestore
+    // REGRA DE OURO: "Salvar" no Campo agora sempre cria um registro na tabela TEMP do Firebase (pendentes_campo) se estiver online.
+    // O botão "Sincronizar" (na tabela de pendentes) é que move o dado para a tabela definitiva.
+    // Isso garante que o que você digita no PC aparece no Celular e vice-versa em tempo real.
+    if (navigator.onLine) loading(true, 'Sincronizando com Nuvem...');
     await addPendenteCloud(finalRecord, uid);
-    
+    if (navigator.onLine) loading(false);
+
+    toast(navigator.onLine ? 'Registro pendente salvo na nuvem!' : 'Salvo localmente (modo offline)', 's');
+
     // Atualiza o cache local após a tentativa de nuvem
     LS.set('realizados_' + uid, S.realizados);
-    LS.set('pendentes_'  + uid, S.pendentes);
   }
 
   clearCampoDraft();
