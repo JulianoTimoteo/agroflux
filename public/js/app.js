@@ -204,4 +204,4 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
-console.log('[AgroFlux] Publicado Git - v4.6.1 · Correção de sincronismo mobile');
+console.log('[AgroFlux] Publicado Git - v4.6.2 · Resolução de conflito de mensagens');
