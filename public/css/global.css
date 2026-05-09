@@ -10,9 +10,9 @@
   --b900:#0d1b3e; --b800:#1565c0; --b700:#1976d2; --b600:#2196f3; --b100:#e3f2fd;
   --glass:rgba(255,255,255,0.07); --glass-b:rgba(255,255,255,0.14);
   --card:#fff; --bg:#eef2f0; --border:#dde6dd;
-  --text:#1a2a1c; --muted:#6b7d6d;
-  --danger:#d32f2f; --warn:#f57c00; --success:#2e7d32;
-  --r:0px; --r-lg:0px;
+  --text:#1a2a1c; --muted:#6b7d6d; /* Cores de texto */
+  --danger:#d32f2f; --warn:#f57c00; --success:#2e7d32; /* Cores de status */
+  --r:8px; --r-lg:12px; /* Raio de borda padrão e grande */
   --sh:0 2px 16px rgba(0,0,0,0.08); --sh-lg:0 8px 40px rgba(0,0,0,0.18);
   --perf-good: #28a745;
   --perf-medium: #17a2b8;

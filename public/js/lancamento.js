@@ -404,24 +404,47 @@ export function toggleSelPend(v) {
 }
 
 export function editarPend(id) {
-  const idx = S.pendentes.findIndex(p => p.id === id);
+  const idx = S.pendentes.findIndex(p => String(p.id) === String(id));
   if (idx === -1) return;
   const r = S.pendentes[idx];
-  setCampoEquipe(getOperacaoAgricola(r.codOperacao)?.Equipe || S.campoEquipe);
+
+  // 1. Restaurar Data (converte DD/MM/YYYY para YYYY-MM-DD para o input date)
+  if (r.data && r.data.includes('/')) {
+    const [d, m, y] = r.data.split('/');
+    sv('cData', `${y}-${m}-${d}`);
+  } else if (r.data) {
+    sv('cData', r.data);
+  }
+
+  // 2. Garantir que a equipe correta esteja ativa para carregar as frotas certas
+  const opRef = getOperacaoAgricola(r.codOperacao);
+  if (opRef && opRef.Equipe) {
+    setCampoEquipe(opRef.Equipe);
+  }
+
+  // 3. Preencher campos em cascata disparando os gatilhos de UI
   sv('cFrota', r.frota); onFrotaChange();
   sv('cCodOp', r.codOperacao); onCodChange();
   sv('cTurno', r.turno); onTurnoChange();
+  if (r.sub) sv('cSub', r.sub);
+
   sv('cHoras', r.horasReal); sv('cHaDia', r.haDia);
   sv('cMotivo', r.motivo); sv('cAcao', r.acao);
+
+  // 4. Restaurar campos extras (aguarda renderização dinâmica do onFrotaChange)
   setTimeout(() => {
     document.querySelectorAll('.c-extra-in').forEach(input => {
       if (r.extras && r.extras[input.dataset.id]) input.value = r.extras[input.dataset.id];
     });
-  }, 50);
+    _verificarMeta();
+  }, 100);
+
+  // 5. Remover da lista de pendentes e atualizar interface
   S.pendentes.splice(idx, 1);
   if (auth.currentUser) LS.set('pendentes_' + auth.currentUser.uid, S.pendentes);
   renderPendentes();
-  toast('Dados carregados para edição.', 's');
+  
+  toast('Registro carregado para edição.', 's');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
