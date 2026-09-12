@@ -1,0 +1,127 @@
+/* ═══════════════════════════════════════════════════════════════
+   dashboard.css — Aba Dashboard (glassmorphism + KPIs + Charts)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Container do dashboard com fundo escuro glass ────────────── */
+#tab-dashboard {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  padding: 20px;
+  border-radius: var(--r-lg);
+  min-height: calc(100vh - 100px);
+  color: #fff;
+}
+#tab-dashboard:not(.active) {
+  display: none !important;
+}
+
+.dash-header-glass {
+  background: var(--glass-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  padding: 20px;
+  margin-bottom: 15px;
+}
+.dash-header-glass h2 {
+  color: #fff;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-content-glass {
+  background: var(--glass-bg);
+  border-radius: var(--r-lg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  padding: 20px;
+}
+
+/* ── KPIs e charts dentro do glass ────────────────────────────── */
+.dash-content-glass .kpi-card,
+.dash-content-glass .chart-card {
+  background: #ffffff !important;
+  border: 1px solid var(--border);
+  box-shadow: none;
+  color: #000000 !important;
+  backdrop-filter: none;
+}
+.dash-content-glass .chart-card canvas {
+  flex: 1;
+  width: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+}
+.dash-content-glass .kpi-card .kpi-val,
+.dash-content-glass .kpi-card .kpi-lbl,
+.dash-content-glass .chart-card .chart-title { color: #000000 !important; }
+.dash-content-glass .dash-insight { background: #fff; border-left-color: var(--g800); color: #333 !important; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+.dash-content-glass .dash-insight i { color: var(--g700); }
+.dash-content-glass .dash-insight.warn { border-left-color: var(--perf-bad); }
+.dash-content-glass .dash-insight strong { color: #000 !important; }
+.dash-content-glass .em-const { color: rgba(255, 255, 255, 0.7); }
+.dash-content-glass .em-const i { color: rgba(255, 255, 255, 0.5); }
+
+/* ── Dash tabs (botões de equipe no header glass) ─────────────── */
+.dash-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)}
+.dtab{background:none;border:1.5px solid var(--border);padding:6px 14px;border-radius:8px;font-size:.76rem;font-weight:600;cursor:pointer;color:var(--muted);transition:all var(--tr)}
+.dtab.active{background:var(--g800);color:#fff;border-color:var(--g800)}
+.dtab:hover:not(.active){background:var(--g100)}
+
+.dtab.dtab-glass {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: #333333;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+.dtab.dtab-glass.active {
+  background: var(--g800) !important;
+  border-color: var(--g800);
+  color: #ffffff !important;
+  font-weight: 700;
+}
+.dtab.dtab-glass:hover:not(.active) {
+  background: var(--g50);
+}
+
+/* ── Grid e cards de KPIs ─────────────────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:11px;margin-bottom:18px}
+.kpi-card{background:#fff;border-radius:8px;padding:14px;box-shadow:var(--sh);border:1px solid var(--border);position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--g800)}
+.kpi-card.blue::before{background:var(--b800)}
+.kpi-card.orange::before{background:var(--warn)}
+.kpi-card.red::before{background:var(--danger)}
+.kpi-icon{font-size:1.1rem;color:var(--g800);margin-bottom:5px}
+.kpi-val{font-size:1.6rem;font-weight:800;line-height:1;font-family:'Courier New',monospace}
+.kpi-lbl{font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:3px}
+
+/* ── Barra de progresso (eficiência global) ───────────────────── */
+.prog-wrap{background:rgba(255,255,255,0.15);border-radius:8px;height:6px;overflow:hidden;margin-top:7px}
+.prog-bar{height:100%;border-radius:8px;transition:width .8s ease}
+
+/* ── Gráficos ─────────────────────────────────────────────────── */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.chart-card{background:#fff;border-radius:8px;padding:16px;box-shadow:var(--sh);border:1px solid var(--border);position:relative;height:400px;display:flex;flex-direction:column;overflow:hidden}
+.chart-title{font-weight:700;font-size:.82rem;color:var(--g900);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+/* ── Empty/em-construção ──────────────────────────────────────── */
+.em-const{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px;color:var(--muted);gap:8px;text-align:center}
+.em-const i{font-size:2.5rem;color:#ffd54f}
+
+/* ── Insights (best/worst) ────────────────────────────────────── */
+.dash-insight{background:var(--g50);border-left:4px solid var(--g700);padding:10px 14px;border-radius:0 10px 10px 0;margin:8px 0;font-size:.72rem;display:flex;align-items:center;gap:8px}
+.dash-insight.warn{border-left-color:var(--warn);background:#fff8e1}
+.dash-insight i{font-size:1rem}
+
+/* ── Responsivo ───────────────────────────────────────────────── */
+@media(max-width:768px){
+  .dash-grid{grid-template-columns:1fr}
+}

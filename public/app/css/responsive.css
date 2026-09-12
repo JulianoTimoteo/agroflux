@@ -1,0 +1,229 @@
+/* ═══════════════════════════════════════════════════════════════
+   responsive.css — Camada final de responsividade (mobile-first)
+   Carregada por último. Não altera o design base: apenas adapta
+   layouts, espaçamentos, tipografia e áreas de toque.
+   Breakpoints: 480 / 640 / 768 / 1024 / 1280 / 1536+
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Fundações: sem overflow horizontal em nenhuma tela ────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+body { -webkit-text-size-adjust: 100%; }
+
+img, svg, video, canvas, iframe, embed, object {
+  max-width: 100%;
+  height: auto;
+}
+canvas { height: auto; }
+
+/* Quebra de palavras longas (e-mails, códigos, nomes de operação) */
+h1, h2, h3, h4, p, span, label, td, th, li, a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.mono, input, select, textarea { overflow-wrap: normal; }
+
+/* Áreas de rolagem com inércia no iOS */
+.tbl-wrap, .ub-right, .dash-tabs-scroll, .modal-content, .custom-op-list {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── 2. Container fluido + ultrawide ──────────────────────────── */
+.page-wrap {
+  width: 100%;
+  max-width: 1820px;
+  margin-inline: auto;
+  padding-inline: clamp(8px, 2.2vw, 28px);
+  padding-block: clamp(8px, 1.4vw, 18px);
+}
+@media (min-width: 1536px) {
+  .page-wrap { max-width: 1680px; }
+}
+@media (min-width: 1920px) {
+  .page-wrap { max-width: 1780px; }
+}
+
+/* Respeita notch / barras do sistema */
+.user-bar { padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
+.campo-fab { bottom: calc(20px + env(safe-area-inset-bottom)); right: calc(16px + env(safe-area-inset-right)); }
+.mobile-nav-trigger { bottom: calc(20px + env(safe-area-inset-bottom)); left: calc(16px + env(safe-area-inset-left)); }
+.toast { bottom: calc(22px + env(safe-area-inset-bottom)); }
+
+/* ── 3. Tipografia fluida ─────────────────────────────────────── */
+.card-head h2 { font-size: clamp(.92rem, 1.6vw, 1.08rem); line-height: 1.3; }
+.card-head h3 { font-size: clamp(.86rem, 1.4vw, 1rem); line-height: 1.3; }
+.dash-titles h2 { font-size: clamp(1.05rem, 2.4vw, 1.5rem); line-height: 1.25; }
+.dash-subtitle { font-size: clamp(.74rem, 1.2vw, .85rem); line-height: 1.5; }
+.kpi-val { font-size: clamp(1.35rem, 3.2vw, 2.25rem) !important; line-height: 1.15; }
+.kpi-lbl { font-size: clamp(.7rem, 1.2vw, .8rem) !important; line-height: 1.35; }
+.info-note { font-size: clamp(.72rem, 1.1vw, .78rem); line-height: 1.6; }
+.login-title { font-size: clamp(1.15rem, 4vw, 1.6rem); line-height: 1.2; }
+.login-sub { line-height: 1.5; }
+
+/* ── 4. Grids adaptativos ─────────────────────────────────────── */
+.form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr)); }
+.kpi-grid  { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+.dash-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+
+/* Grid "Realizado" da aba Campo: nunca força 4 colunas em tela estreita */
+#cRealizedGrid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)) !important; }
+
+/* Gráficos: altura proporcional em vez de 400px fixos */
+.chart-card { height: auto; min-height: clamp(260px, 42vh, 400px); }
+.chart-card canvas { width: 100% !important; }
+
+/* ── 5. Laptop / tablet paisagem (≤1024px) ────────────────────── */
+@media (max-width: 1024px) {
+  .card { padding: 16px; }
+  .srch { width: 100%; max-width: 260px; }
+  .plan-box { gap: 14px; padding: 12px 14px; }
+  .meta-tag { margin-left: 0; }
+}
+
+/* ── 6. Tablet retrato (≤768px) ───────────────────────────────── */
+@media (max-width: 768px) {
+  .card-head { align-items: flex-start; }
+  .card-head > div { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* Tabelas continuam legíveis: rolagem lateral clara, sem esmagar */
+  .tbl-wrap { margin-inline: 0; }
+  .tbl-wrap table { min-width: 640px; }
+  .tbl-wrap { scrollbar-width: thin; }
+
+  /* Toques confortáveis */
+  .btn, .ub-btn, .tab-btn, .dtab, .btn-page { min-height: 40px; }
+  .btn-sm { min-height: 36px; }
+  .btn-xs { min-height: 30px; }
+
+  /* Campos: 16px evita zoom automático no iOS */
+  .fg input, .fg select, .fg textarea, .srch { font-size: 16px; min-height: 44px; }
+  .fg textarea { min-height: 76px; }
+
+  .plan-box { width: 100%; justify-content: space-between; }
+  .pbi { flex: 1 1 30%; }
+
+  .act-btns { flex-direction: column-reverse; }
+  .act-btns .btn { width: 100%; justify-content: center; min-height: 46px; }
+
+  .dash-header-top { flex-direction: column; align-items: stretch; gap: 12px; }
+  .dash-actions { flex-wrap: wrap; gap: 8px; }
+  .dash-actions .fg-dash { flex: 1 1 140px; }
+  #tab-dashboard { padding: 12px; border-radius: 12px; }
+  .chart-card { min-height: 300px; padding: 12px; }
+  .pag { flex-wrap: wrap; }
+}
+
+/* ── 7. Mobile large (≤640px) ─────────────────────────────────── */
+@media (max-width: 640px) {
+  .card-head { flex-direction: column; }
+  .card-head > div { width: 100%; }
+  .card-head > div .btn { flex: 1 1 auto; justify-content: center; }
+  .srch { max-width: 100%; }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .kpi-card { padding: 12px; }
+  .dash-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
+  .dash-tabs::-webkit-scrollbar { display: none; }
+  .dtab { flex: 0 0 auto; }
+}
+
+/* ── 8. Smartphones pequenos (≤480px) ─────────────────────────── */
+@media (max-width: 480px) {
+  .page-wrap { padding-inline: 8px; }
+  .card { padding: 12px 10px; }
+  .form-card { padding: 12px; }
+  .kpi-grid { grid-template-columns: 1fr; }
+  #cRealizedGrid { grid-template-columns: 1fr !important; }
+  .plan-box { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .pbi { width: 100%; display: flex; align-items: baseline; justify-content: space-between; }
+  .pbi span { font-size: .95rem; }
+  .chart-card { min-height: 260px; }
+  .tbl-wrap table { min-width: 560px; }
+  .login-card { padding: 20px 16px; }
+  .login-footer { font-size: .58rem; line-height: 1.5; }
+  .fb-badge { white-space: normal; text-align: center; }
+}
+
+/* ── 9. Telas muito baixas (paisagem no celular) ──────────────── */
+@media (max-height: 480px) and (orientation: landscape) {
+  .user-bar { position: static; }
+  .tabs-nav { position: static; }
+  .modal-content { max-height: 96vh; }
+  .campo-fab { bottom: 8px; }
+  .mobile-nav-trigger { bottom: 8px; }
+}
+
+/* ── 10. Dispositivos de toque: alvos mínimos ─────────────────── */
+@media (pointer: coarse) {
+  .btn, .ub-btn, .tab-btn, .dtab, .fab, .btn-page, .pwd-toggle {
+    min-height: 44px;
+  }
+  .fab { width: 56px; height: 56px; }
+  input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+  .card:hover, .kpi-card:hover, .btn:hover { transform: none; }
+}
+
+/* ── 11. Acessibilidade de movimento ──────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── 12. Impressão ────────────────────────────────────────────── */
+@media print {
+  .user-bar, .tabs-nav, .campo-fab, .mobile-nav-trigger, .act-btns, .toast { display: none !important; }
+  .page-wrap { max-width: 100%; padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+  .tbl-wrap { overflow: visible; }
+  .tbl-wrap table { min-width: 0; }
+}
+
+/* ── 13. Tabelas: colunas legíveis com rolagem horizontal ─────── */
+.tbl-wrap {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+.tbl-wrap table {
+  width: 100%;
+  min-width: 1100px;
+  table-layout: auto;
+}
+.tbl-wrap th,
+.tbl-wrap td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.tbl-wrap th {
+  font-size: .62rem;
+  letter-spacing: .02em;
+  padding: 10px 12px;
+}
+.tbl-wrap td {
+  padding: 9px 12px;
+}
+.tbl-wrap .real-cell-wrap,
+.tbl-wrap td.wrap,
+.tbl-wrap th.wrap {
+  white-space: normal;
+}
+.tbl-wrap thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+@media (max-width: 768px) {
+  .tbl-wrap table { min-width: 860px; }
+  .tbl-wrap th { font-size: .58rem; padding: 8px 10px; }
+  .tbl-wrap td { padding: 8px 10px; }
+}
+@media print {
+  .tbl-wrap table { min-width: 0; }
+  .tbl-wrap th, .tbl-wrap td { white-space: normal; }
+}

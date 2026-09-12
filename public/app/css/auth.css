@@ -1,0 +1,58 @@
+/* ═══════════════════════════════════════════════════════════════
+   auth.css — Tela de Login e Setup (primeiro acesso)
+   ═══════════════════════════════════════════════════════════════ */
+
+#loginPage,#setupPage{display:none;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(145deg,#071a09 0%,#0a1f0c 35%,#000 65%,#0c1e0e 100%);position:relative;overflow:hidden}
+#loginPage::before,#setupPage::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 60% at 15% 50%,rgba(46,125,50,.22) 0%,transparent 70%),radial-gradient(ellipse 50% 40% at 85% 20%,rgba(27,94,32,.18) 0%,transparent 60%),radial-gradient(ellipse 40% 50% at 60% 80%,rgba(13,36,20,.3) 0%,transparent 60%)}
+#loginPage::after,#setupPage::after{content:'';position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(67,160,71,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(67,160,71,.04) 1px,transparent 1px);background-size:48px 48px}
+
+.login-wrap{position:relative;z-index:1;width:100%;max-width:420px;padding:20px;animation:fadeUp 0.5s ease;}
+.login-card{background:rgba(255,255,255,0.97);border-radius:var(--r-lg);padding:40px 36px;box-shadow:0 30px 90px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.08)}
+.login-brand{text-align:center;margin-bottom:28px}
+.login-icon{width:72px;height:72px;background:linear-gradient(135deg,var(--g800),var(--g600));border-radius:18px;display:inline-flex;align-items:center;justify-content:center;color:white;font-size:1.8rem;margin-bottom:14px;box-shadow:0 6px 20px rgba(46,125,50,.35)}
+.login-title{font-size:1.4rem;font-weight:800;color:var(--g900)}
+.login-sub{font-size:.72rem;color:var(--muted);margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+.login-form .fg{margin-bottom:16px}
+.login-form label{display:block;font-size:.68rem;font-weight:700;color:var(--g800);margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase}
+.login-form .fi{display:flex;align-items:center;gap:12px}
+.login-form .fi i{color:var(--muted);font-size:1.1rem;width:24px;text-align:center;flex-shrink:0}
+.login-form input{flex:1;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.88rem;outline:none;transition:all var(--tr);background:#fafafa;color:var(--text)}
+.pwd-wrapper{position:relative;display:flex;align-items:center;flex:1}
+.pwd-wrapper input{padding-right:38px}
+.pwd-wrapper .pwd-toggle{position:absolute;right:12px;color:var(--muted);cursor:pointer;transition:color 0.2s;z-index:2}
+.pwd-wrapper .pwd-toggle:hover{color:var(--g700)}
+.login-options{display:flex;justify-content:space-between;gap:10px;margin:10px 0 15px 0;padding:0 4px}
+.login-options label{display:flex;align-items:center;gap:6px;font-size:0.65rem;color:var(--muted);cursor:pointer;text-transform:none;letter-spacing:0;font-weight:600}
+.login-options input[type="checkbox"]{cursor:pointer;width:14px;height:14px}
+.login-form input:focus{border-color:var(--g700);box-shadow:0 0 0 3px rgba(46,125,50,.12);background:#fff}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--g800) 0%,var(--g600) 100%);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:700;letter-spacing:.03em;margin-top:8px;cursor:pointer;transition:all var(--tr);box-shadow:0 4px 16px rgba(46,125,50,.35);display:flex;align-items:center;justify-content:center;gap:8px}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(46,125,50,.45)}
+.login-btn:active{transform:none}
+.login-btn:disabled{opacity:.6;transform:none;cursor:not-allowed}
+.login-icon.err {
+  background: linear-gradient(135deg, var(--danger), #b71c1c) !important;
+  box-shadow: 0 6px 20px rgba(211, 47, 47, 0.4) !important;
+  animation: shakeIcon 0.4s ease;
+}
+@keyframes shakeIcon { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-7px)} 50%{transform:translateX(7px)} 75%{transform:translateX(-7px)} }
+
+.login-err{background:#fff0f0;border:1px solid #ffb3b3;border-radius:8px;padding:9px 13px;color:#c62828;font-size:.77rem;text-align:center;margin-top:12px;display:none}
+.login-footer{text-align:center;margin-top:18px;font-size:.64rem;color:rgba(255,255,255,.28);letter-spacing:.04em}
+.login-link{text-align:center;margin-top:14px;font-size:.72rem;color:var(--muted)}
+.login-link a{color:var(--g700);text-decoration:none;font-weight:600;cursor:pointer}
+.login-link a:hover{text-decoration:underline}
+
+/* Loading overlay (usado tanto durante login quanto durante operações) */
+.loading-overlay{position:fixed;inset:0;background:rgba(7,26,9,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px}
+.loading-overlay .spin{width:44px;height:44px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--g600);border-radius:50%;animation:spin .8s linear infinite}
+.loading-overlay p{color:rgba(255,255,255,.7);font-size:.82rem;letter-spacing:.04em}
+
+/* Responsivo do login */
+@media(max-width:768px){
+  .login-card{padding:28px 22px}
+}
+
+/* Toggle de visibilidade de senha (Gerenciar Conta) */
+.pwd-toggle{cursor:pointer;position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.8rem;z-index:1}
+.pwd-wrapper{position:relative}
+.pwd-wrapper input{padding-right:30px}

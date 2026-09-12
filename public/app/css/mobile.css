@@ -1,0 +1,140 @@
+/* ═══════════════════════════════════════════════════════════════
+   mobile.css — Interface de celular (APK / toque)
+   Carregado por último. Só age quando <html> tem .ui-mobile.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Navegação inferior ─────────────────────────────────────── */
+#mobileNav { display: none; }
+
+html.ui-mobile #mobileNav {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 900;
+  background: #fff;
+  border-top: 1.5px solid var(--border);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, .08);
+}
+
+html.ui-mobile .mnav-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 700;
+  border-radius: 12px;
+  cursor: pointer;
+}
+html.ui-mobile .mnav-btn i { font-size: 1.15rem; }
+html.ui-mobile .mnav-btn.active { color: var(--g700); background: rgba(27, 94, 32, .08); }
+
+html.ui-mobile .mnav-badge {
+  position: absolute;
+  top: 2px; right: 22%;
+  min-width: 18px; height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #c62828;
+  color: #fff;
+  font-size: .6rem;
+  font-style: normal;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+
+html.ui-mobile body { padding-bottom: 78px; }
+
+/* ── Tabelas viram cartões ──────────────────────────────────── */
+.pend-cards { display: none; }
+
+html.ui-mobile #tab-campo .tbl-wrap,
+html.ui-mobile #tab-campo .pag { display: none; }
+
+html.ui-mobile .pend-cards {
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.pcard {
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: var(--sh);
+}
+.pcard-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pcard-cod { font-weight: 800; font-size: .8rem; color: var(--g700); }
+.pcard-title { margin: 8px 0 10px; font-size: .95rem; line-height: 1.3; color: var(--g950); }
+.pcard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 0; }
+.pcard-grid dt { font-size: .65rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.pcard-grid dd { margin: 0; font-size: .95rem; font-weight: 700; color: var(--text); }
+.pcard-meta { margin: 10px 0 0; font-size: .72rem; color: var(--muted); }
+.pcard-foto { margin-top: 10px; width: 100%; border-radius: 12px; }
+.pcard-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pcard-acts .btn { flex: 1 1 30%; min-height: 44px; justify-content: center; }
+.pcard-empty { padding: 26px 14px; text-align: center; color: var(--muted); border: 1.5px dashed var(--border); border-radius: 14px; }
+
+/* ── Formulário de campo para o dedo ────────────────────────── */
+html.ui-mobile .form-grid { grid-template-columns: 1fr !important; gap: 12px; }
+html.ui-mobile #cRealizedGrid { grid-template-columns: 1fr !important; }
+html.ui-mobile .fg input,
+html.ui-mobile .fg select,
+html.ui-mobile .fg textarea { min-height: 48px; font-size: 1rem; }
+html.ui-mobile .act-btns .btn { flex: 1; min-height: 50px; font-size: .95rem; }
+html.ui-mobile .campo-equipe-btn { min-height: 46px; }
+
+/* ── Anexos (foto / GPS) ────────────────────────────────────── */
+.anexo-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.anexo-btns .btn { min-height: 44px; }
+#cAnexosPreview { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.anexo-foto { position: relative; margin: 0; }
+.anexo-foto img { width: 90px; height: 90px; object-fit: cover; border-radius: 12px; border: 1.5px solid var(--border); }
+.anexo-geo { display: inline-flex; align-items: center; gap: 6px; font-size: .74rem; font-weight: 700; color: var(--g700); background: rgba(27, 94, 32, .08); border-radius: 999px; padding: 8px 12px; }
+.anexo-x { border: 0; background: rgba(0, 0, 0, .55); color: #fff; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; }
+.anexo-foto .anexo-x { position: absolute; top: -6px; right: -6px; }
+.anexo-geo .anexo-x { width: 20px; height: 20px; background: transparent; color: var(--muted); }
+
+/* ── Menu lateral vira gaveta no celular ────────────────────── */
+html.ui-mobile .sidenav { width: min(84vw, 320px); }
+
+/* ── Trocar de interface ────────────────────────────────────── */
+.ui-switch { display: inline-flex; align-items: center; gap: 6px; }
+html.ui-mobile .ub-actions .ub-btn span { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLET — mesma base, layout expandido (duas colunas)
+   Aplica-se quando a interface de toque roda em tela média
+   (tablets no navegador e no APK).
+   ═══════════════════════════════════════════════════════════════ */
+html.ui-mobile.ui-tablet .pend-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+html.ui-mobile.ui-tablet .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+html.ui-mobile.ui-tablet #cRealizedGrid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+html.ui-mobile.ui-tablet .kpi-grid,
+html.ui-mobile.ui-tablet .dash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+html.ui-mobile.ui-tablet .mobile-nav { max-width: 720px; margin: 0 auto; border-radius: 18px 18px 0 0; }
+html.ui-mobile.ui-tablet .ub-actions .ub-btn span { display: inline; }
+
+/* Tablet em paisagem aproveita ainda mais espaço */
+@media (orientation: landscape) and (min-width: 900px) {
+  html.ui-mobile.ui-tablet .pend-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ── Safe area (barras do sistema no Android) ───────────────── */
+html.is-native body { padding-top: env(safe-area-inset-top); }
+html.is-native .mobile-nav { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
