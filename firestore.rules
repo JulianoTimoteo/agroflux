@@ -1,0 +1,163 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────
+    function isAuth()   { return request.auth != null; }
+    
+    function getUser() { 
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)); 
+    }
+    
+    function userExists() {
+      return isAuth() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
+    function isMaster() {
+      return isAuth() && userExists() && getUser().data.get('Nivel', '') == 'master';
+    }
+
+    function isAdmin()  {
+      return isAuth() && userExists() && getUser().data.get('Nivel', '') in ['master', 'administrador', 'admin'];
+    }
+
+    function isActive() {
+      // Uma conta Auth sem perfil não possui acesso operacional.
+      // Assim, excluir /usuarios/{uid} revoga efetivamente o acesso.
+      return userExists() && getUser().data.get('Ativo', true) == true;
+    }
+
+    function isTeam(team) {
+      // O app atual grava Equipes como uma lista de identificadores normalizados.
+      // Equipe singular permanece aceito para perfis antigos.
+      return isActive() && (
+        team in getUser().data.get('Equipes', []) ||
+        getUser().data.get('Equipe', '').lower() == team.lower()
+      );
+    }
+
+    function teamAccess(team) {
+      return isAdmin() || isTeam(team);
+    }
+
+    function isSystemCollection(collectionName) {
+      // NOTA: Mantenha esta lista atualizada ao adicionar novas coleções de infraestrutura
+      return collectionName in ['usuarios', 'admin_config', 'dashboards', 'herbicida', 'tratos',
+        'biomassa', 'preparo', 'linhaamarela', 'fertirrigacao', 'plantio', 'tratosculturais',
+        'user_preferences', 'pendentes_campo', 'pending_temp'];
+    }
+
+    // ── Configuração Admin ────────────────────────────────────
+    match /admin_config/{doc} {
+      allow get, list: if isActive();
+      allow write:     if isAdmin();
+    }
+
+    // ── Registros de campo por equipe ─────────────────────────
+    // Nota: Com a melhoria no isTeam, não é mais necessário checar versões 
+    // minúsculas/maiúsculas manualmente.
+    
+    match /herbicida/{docId} {
+      allow get, list, create: if isAuth() && teamAccess('herbicida');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
+    }
+    match /tratos/{docId} {
+      allow get, list, create: if isAuth() && teamAccess('tratos');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
+    }
+    match /biomassa/{docId} {
+      allow get, list, create: if isAuth() && teamAccess('biomassa');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
+    }
+    match /preparo/{docId} {
+      allow get, list, create: if isAuth() && teamAccess('preparo');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
+    }
+    match /linhaamarela/{docId} {
+      allow get, list, create: if isAuth() && teamAccess('linhaamarela');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
+    }
+    match /fertirrigacao/{docId} {
+      allow get, list, create: if isAuth() && teamAccess('fertirrigacao');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
+    }
+    match /plantio/{docId} {
+      allow get, list, create: if isAuth() && teamAccess('plantio');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
+    }
+    match /tratosculturais/{docId} {
+      allow get, list, create: if isAuth() && teamAccess('tratosculturais');
+      allow update: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(1, 'h'));
+      allow delete: if isAdmin() || (isAuth() && request.auth.uid == resource.data.uid && request.time < timestamp(resource.data.timestamp) + duration.value(5, 'm'));
+    }
+
+    // ── REGRA DINÂMICA: novas equipes futuras ─────────────────
+    match /{dynamicCollection}/{docId} {
+      allow get, list, create: if !isSystemCollection(dynamicCollection) && (isAdmin() || (isActive() && isTeam(dynamicCollection)));
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Usuários ──────────────────────────────────────────────
+    // Campos que definem privilégio só podem ser gravados por Master.
+    function privFieldsUnchanged() {
+      return request.resource.data.get('Nivel', '')   == resource.data.get('Nivel', '')
+          && request.resource.data.get('admin', false) == resource.data.get('admin', false)
+          && request.resource.data.get('Ativo', true)  == resource.data.get('Ativo', true)
+          && request.resource.data.get('Abas', [])     == resource.data.get('Abas', [])
+          && request.resource.data.get('Equipes', [])  == resource.data.get('Equipes', [])
+          && request.resource.data.get('excluido', false) == resource.data.get('excluido', false);
+    }
+
+    match /usuarios/{uid} {
+      allow get:    if isAuth() && (request.auth.uid == uid || isAdmin());
+      allow list:   if isAdmin();
+      // Bootstrap: o primeiro Master só pode ser criado enquanto o sistema
+      // ainda não foi inicializado (sentinela admin_config/bootstrap ausente).
+      // Auto-cadastro comum nunca pode nascer com privilégio elevado.
+      allow create: if isMaster() || (
+        request.auth.uid == uid &&
+        !exists(/databases/$(database)/documents/admin_config/bootstrap)
+      ) || (
+        request.auth.uid == uid &&
+        !(request.resource.data.get('Nivel', '') in ['master', 'administrador', 'admin']) &&
+        request.resource.data.get('admin', false) == false
+      );
+      allow update: if isMaster() || (
+        request.auth.uid == uid && privFieldsUnchanged()
+      );
+      allow delete: if isMaster();
+    }
+
+    // ── Preferências simples (aba, equipe, rascunho) ──────────
+    match /user_preferences/{uid} {
+      allow read, write: if isAuth() && request.auth.uid == uid;
+    }
+
+    // ── Pendentes por documento (subcoleção) ──────────────────
+    // Regra simplificada: SEM isAdmin() no read.
+    // isAdmin() chama getUser() server-side; em condições de timing/quota
+    // isso faz getDocs lançar erro silencioso e bloqueia a sincronização.
+    match /pendentes_campo/{uid}/items/{itemId} {
+      allow read, write: if isAuth() && request.auth.uid == uid;
+    }
+
+    // ── Pendentes offline temporários ─────────────────────────
+    match /pending_temp/{uid}/items/{itemId} {
+      allow read, write: if isAuth() && request.auth.uid == uid;
+    }
+
+    // ── Dashboards (futuro) ───────────────────────────────────
+    match /dashboards/{docId} {
+      allow read:  if isAuth() && isActive();
+      allow write: if isAdmin() && isActive();
+    }
+  }
+}
